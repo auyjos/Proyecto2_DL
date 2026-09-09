@@ -1,0 +1,3 @@
+dataset,label_meaning,rows,senders,positive_transactions,positive_senders,positive_transaction_pct,positive_sender_pct,positive_senders_ge_5,time_min,time_max,time_unit,singleton_senders,senders_ge_5,seconds
+PaySim,Fraude (isFraud),6362620,6353307,8213,8213,0.12908204481801522,0.12927125983365828,0,1,743,step (hora simulada),6344009,0,9.73
+IBM HI-Small,Lavado (Is Laundering),5078345,496999,5177,3376,0.10194266045335636,0.67927702067811,1626,2022/09/01 00:00,2022/09/18 16:18,Timestamp,152754,128779,7.458
