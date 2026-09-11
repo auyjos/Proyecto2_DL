@@ -94,4 +94,3 @@ Después, abrir `notebooks/proyecto2.ipynb` y ejecutar todas las celdas. La ruta
 .\.venv\Scripts\python.exe -m pytest -q --basetemp=.cache/pytest
 ```
 
-La explicación completa del contrato está en [docs/contrato_datos_c1.md](docs/contrato_datos_c1.md) y la sección propuesta para el reporte en [report/c1_ingenieria_datos.md](report/c1_ingenieria_datos.md).
