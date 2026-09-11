@@ -1,6 +1,29 @@
 # CC3092 Proyecto 2 — detección de lavado en secuencias
 
-Este repositorio contiene la ingeniería de datos de C1 y el análisis que justifica usar IBM AML HI-Small para los modelos secuenciales. Los CSV originales y los artefactos generados se excluyen de Git por su tamaño.
+Este proyecto académico desarrolla un prototipo de detección de lavado de dinero a partir del historial de transacciones de cada remitente. El objetivo es identificar patrones sospechosos que una operación aislada no revela, como cambios de frecuencia, montos atípicos, nuevos destinatarios y actividad en horarios inusuales. Además de producir una alerta, el sistema debe señalar qué transacciones influyeron en ella para facilitar su revisión.
+
+## Enfoque del proyecto
+
+El sistema se plantea en dos etapas complementarias:
+
+1. **Aprendizaje de la normalidad:** un modelo secuencial se entrena con historiales normales y utiliza el error de reconstrucción como score de anomalía.
+2. **Clasificación supervisada:** un segundo modelo aprovecha la representación aprendida para estimar la probabilidad de lavado con los ejemplos etiquetados.
+
+Los resultados de ambas etapas se combinarán en una predicción final y se compararán contra una línea base supervisada entrenada desde cero. El proyecto también contempla interpretabilidad sobre las transacciones, un reporte ejecutivo y un MVP para consultar remitentes del conjunto de prueba.
+
+## Datos y alcance actual
+
+Se analizaron PaySim y las seis variantes Small, Medium y Large de IBM AML. PaySim contiene millones de transacciones, pero casi todos sus remitentes aparecen una sola vez, lo que limita el aprendizaje temporal. Por esta razón, el pipeline de modelado utiliza **IBM AML HI-Small**, que ofrece historiales más útiles y permite reproducir los experimentos dentro del presupuesto de Google Colab. Todos los datos son sintéticos y sus etiquetas representan fenómenos distintos: fraude en PaySim y lavado de dinero en IBM AML.
+
+La implementación actual cubre el **Componente 1 (C1)**: validación de datos, selección reproducible de remitentes, construcción de secuencias, ingeniería de features, particiones sin compartir entidades, artefactos persistidos y visualizaciones. El contrato resultante sirve como entrada común para los modelos de las etapas A y B. Los CSV originales y los artefactos generados se excluyen de Git por su tamaño.
+
+Los principales recursos del repositorio son:
+
+- `src/data/sequences.py`: pipeline reutilizable y contrato de DataLoaders.
+- `notebooks/proyecto2.ipynb`: notebook principal ejecutado y espacio de integración del equipo.
+- `notebooks/comparacion_datasets.ipynb`: comparación reproducible de los datasets.
+- `docs/contrato_datos_c1.md`: formas, campos y reglas que deben respetar los modelos.
+- `report/c1_ingenieria_datos.md`: sección de ingeniería de datos propuesta para el reporte final.
 
 ## Preparación
 
