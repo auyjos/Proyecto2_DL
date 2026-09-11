@@ -3,4 +3,10 @@ __pycache__/
 .ipynb_checkpoints/
 .cache/
 datasets/
-/docs
+artifacts/
+checkpoints/
+
+/docs/*
+!/docs/contrato_datos_c1.md
+!/docs/plan_c1_jose_auyon.md
+!/docs/prompts_ia.md
