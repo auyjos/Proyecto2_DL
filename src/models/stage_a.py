@@ -1,26 +1,30 @@
-"""Etapa A: arquitectura del autoencoder de secuencias.
+"""Etapa A: autoencoder de secuencias para aprender comportamiento normal.
 
 Consume el contrato de ``src.data.sequences`` (``x [B,L,F]``, ``mask [B,L]``)
-sin depender de las etiquetas ``y``: el objetivo es aprender una
-representación comprimida ``z`` del comportamiento normal de un remitente y
-reconstruir la secuencia original desde ``z``. El error de reconstrucción
-por secuencia (``masked_reconstruction_error``) será el score de anomalía
-una vez entrenado el modelo (entrenamiento, umbral y checkpoint se añaden en
-los siguientes commits de esta rama).
+y no depende de las etiquetas ``y`` para actualizar sus pesos:
+``train_stage_a`` solo itera ``loaders["train_normal"]``. El error de
+reconstrucción por secuencia (``masked_reconstruction_error``) es el score
+de anomalía; el umbral se elige después, en validación (siguiente commit).
 
 ``SequenceAutoencoder``
     Encoder Transformer con máscara de padding, pooling por atención hacia
-    ``z``, y un decoder que reconstruye las ``max_len`` posiciones a partir
-    de ese vector comprimido.
+    un vector comprimido ``z``, y un decoder que reconstruye las ``max_len``
+    posiciones a partir de ese vector.
+``train_stage_a``
+    Bucle de entrenamiento sobre normalidad con selección de checkpoint por
+    AUC-PR de validación (métrica, no gradiente).
 """
 
 from __future__ import annotations
 
 import math
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
+import numpy as np
 import torch
+from sklearn.metrics import average_precision_score
 from torch import nn
+from torch.utils.data import DataLoader
 
 
 @dataclass
@@ -115,3 +119,100 @@ def masked_reconstruction_error(x_hat: torch.Tensor, x: torch.Tensor, mask: torc
     squared_error = (x_hat - x).pow(2) * mask.unsqueeze(-1)
     valid_elements = mask.sum(dim=1).clamp(min=1).to(squared_error.dtype) * x.size(-1)
     return squared_error.sum(dim=(1, 2)) / valid_elements
+
+
+def resolve_device(preferred: str | None = None) -> torch.device:
+    if preferred:
+        return torch.device(preferred)
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+
+@torch.no_grad()
+def score_loader(model: SequenceAutoencoder, loader: DataLoader, device: torch.device) -> dict[str, np.ndarray]:
+    model.eval()
+    scores, labels, sender_ids, entity_ids = [], [], [], []
+    for batch in loader:
+        x = batch["x"].to(device)
+        mask = batch["mask"].to(device)
+        output = model(x, mask)
+        error = masked_reconstruction_error(output["x_hat"], x, mask)
+        scores.append(error.cpu().numpy())
+        labels.append(batch["y"].numpy())
+        sender_ids.extend(batch["sender_id"])
+        entity_ids.extend(batch["entity_id"])
+    return {
+        "score": np.concatenate(scores) if scores else np.empty(0, dtype=np.float32),
+        "y": np.concatenate(labels) if labels else np.empty(0, dtype=np.float32),
+        "sender_id": np.asarray(sender_ids),
+        "entity_id": np.asarray(entity_ids),
+    }
+
+
+@dataclass
+class TrainingHistory:
+    train_loss: list[float] = field(default_factory=list)
+    validation_average_precision: list[float] = field(default_factory=list)
+    best_epoch: int = 0
+
+
+def train_stage_a(
+    loaders: dict[str, DataLoader],
+    config: StageAConfig,
+    *,
+    epochs: int = 15,
+    lr: float = 1e-3,
+    weight_decay: float = 1e-5,
+    device: str | None = None,
+    log_every: int = 1,
+) -> tuple[SequenceAutoencoder, TrainingHistory]:
+    """Entrenar exclusivamente sobre ``loaders["train_normal"]``.
+
+    La AUC-PR de validación se calcula cada época solo para elegir el mejor
+    checkpoint (no participa en el gradiente), porque con ~0.7% de positivos
+    en validación es una señal de separabilidad más informativa que la
+    pérdida de reconstrucción por sí sola.
+    """
+    torch.manual_seed(config.seed)
+    resolved_device = resolve_device(device)
+    model = SequenceAutoencoder(config).to(resolved_device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    history = TrainingHistory()
+    best_state = {key: value.detach().clone() for key, value in model.state_dict().items()}
+    best_ap = -1.0
+
+    for epoch in range(epochs):
+        model.train()
+        epoch_losses = []
+        for batch in loaders["train_normal"]:
+            x = batch["x"].to(resolved_device)
+            mask = batch["mask"].to(resolved_device)
+            optimizer.zero_grad()
+            output = model(x, mask)
+            per_sequence_error = masked_reconstruction_error(output["x_hat"], x, mask)
+            loss = per_sequence_error.mean()
+            loss.backward()
+            optimizer.step()
+            epoch_losses.append(loss.item())
+        train_loss = float(np.mean(epoch_losses)) if epoch_losses else float("nan")
+        history.train_loss.append(train_loss)
+
+        validation = score_loader(model, loaders["validation"], resolved_device)
+        if validation["y"].sum() > 0:
+            ap = float(average_precision_score(validation["y"], validation["score"]))
+        else:
+            ap = float("nan")
+        history.validation_average_precision.append(ap)
+        if ap >= best_ap:
+            best_ap = ap
+            history.best_epoch = epoch
+            best_state = {key: value.detach().clone() for key, value in model.state_dict().items()}
+
+        if log_every and epoch % log_every == 0:
+            print(f"epoch {epoch:02d} | train_loss={train_loss:.5f} | validation_AP={ap:.4f}")
+
+    model.load_state_dict(best_state)
+    return model, history

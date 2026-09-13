@@ -1,14 +1,61 @@
-"""Etapa A: arquitectura del autoencoder de secuencias."""
+"""Etapa A: arquitectura, entrenamiento sobre normalidad y scoring."""
 
 from __future__ import annotations
 
 import numpy as np
 import torch
+from torch.utils.data import DataLoader, Dataset
 
-from src.models.stage_a import SequenceAutoencoder, StageAConfig, masked_reconstruction_error
+from src.models.stage_a import (
+    SequenceAutoencoder,
+    StageAConfig,
+    masked_reconstruction_error,
+    score_loader,
+    train_stage_a,
+)
 
 FEATURE_DIM = 6
 MAX_LEN = 5
+
+
+class _ToyDataset(Dataset):
+    def __init__(self, x: np.ndarray, mask: np.ndarray, y: np.ndarray) -> None:
+        self.x = x
+        self.mask = mask
+        self.y = y
+
+    def __len__(self) -> int:
+        return len(self.y)
+
+    def __getitem__(self, index: int) -> dict:
+        return {"x": self.x[index], "mask": self.mask[index], "y": self.y[index], "index": index}
+
+
+def _collate(samples: list[dict]) -> dict:
+    return {
+        "x": torch.stack([torch.from_numpy(sample["x"]) for sample in samples]),
+        "mask": torch.stack([torch.from_numpy(sample["mask"]) for sample in samples]),
+        "y": torch.tensor([sample["y"] for sample in samples], dtype=torch.float32),
+        "sender_id": [f"S{sample['index']}" for sample in samples],
+        "entity_id": [f"E{sample['index']}" for sample in samples],
+    }
+
+
+def _make_loader(count: int, *, rng: np.random.Generator, shuffle: bool, positive_fraction: float = 0.0) -> DataLoader:
+    lengths = rng.integers(2, MAX_LEN + 1, size=count)
+    x = np.zeros((count, MAX_LEN, FEATURE_DIM), dtype=np.float32)
+    mask = np.zeros((count, MAX_LEN), dtype=bool)
+    for index, length in enumerate(lengths):
+        x[index, :length] = rng.normal(size=(length, FEATURE_DIM)).astype(np.float32)
+        mask[index, :length] = True
+    n_positive = int(round(count * positive_fraction))
+    y = np.array([1.0] * n_positive + [0.0] * (count - n_positive), dtype=np.float32)
+    if n_positive:
+        # Los positivos se generan con una escala distinta para que el
+        # error de reconstrucción sea separable y el umbral tenga sentido.
+        x[:n_positive] *= 6.0
+    dataset = _ToyDataset(x, mask, y)
+    return DataLoader(dataset, batch_size=4, shuffle=shuffle, collate_fn=_collate)
 
 
 def _tiny_config() -> StageAConfig:
@@ -52,3 +99,19 @@ def test_masked_reconstruction_error_is_zero_for_perfect_reconstruction() -> Non
     mask = torch.tensor([[True, True, False, False, False], [True, True, True, False, False]])
     error = masked_reconstruction_error(x.clone(), x, mask)
     np.testing.assert_allclose(error.numpy(), np.zeros(2), atol=1e-6)
+
+
+def test_train_stage_a_runs_and_selects_best_checkpoint_by_validation_ap() -> None:
+    rng = np.random.default_rng(1)
+    loaders = {
+        "train_normal": _make_loader(40, rng=rng, shuffle=True),
+        "validation": _make_loader(20, rng=rng, shuffle=False, positive_fraction=0.2),
+    }
+    model, history = train_stage_a(loaders, _tiny_config(), epochs=3, device="cpu", log_every=0)
+
+    assert len(history.train_loss) == 3
+    assert len(history.validation_average_precision) == 3
+    assert all(np.isfinite(value) for value in history.train_loss)
+
+    validation_scores = score_loader(model, loaders["validation"], torch.device("cpu"))
+    assert validation_scores["score"].shape == validation_scores["y"].shape
