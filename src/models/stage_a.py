@@ -13,16 +13,24 @@ de anomalía; el umbral se elige después, en validación (siguiente commit).
 ``train_stage_a``
     Bucle de entrenamiento sobre normalidad con selección de checkpoint por
     AUC-PR de validación (métrica, no gradiente).
+``select_threshold``
+    Barrido sobre la curva precisión-recall de validación; elige el umbral
+    que maximiza F1, justificado por la prevalencia extrema (~0.7% positivos).
+``save_checkpoint`` / ``load_checkpoint``
+    Persisten pesos, configuración y métricas para que el MVP y la Etapa B
+    reconstruyan el mismo modelo sin reajustar hiperparámetros.
 """
 
 from __future__ import annotations
 
 import math
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Iterable
 
 import numpy as np
 import torch
-from sklearn.metrics import average_precision_score
+from sklearn.metrics import average_precision_score, precision_recall_curve
 from torch import nn
 from torch.utils.data import DataLoader
 
@@ -216,3 +224,98 @@ def train_stage_a(
 
     model.load_state_dict(best_state)
     return model, history
+
+
+@dataclass
+class ThresholdInfo:
+    threshold: float
+    average_precision: float
+    precision: float
+    recall: float
+    f1: float
+
+    def as_dict(self) -> dict:
+        return asdict(self)
+
+
+def select_threshold(scores: np.ndarray, labels: np.ndarray) -> ThresholdInfo:
+    """Elegir el umbral que maximiza F1 sobre la curva precisión-recall.
+
+    Con clases tan desbalanceadas (~0.7% positivos en validación), exactitud
+    o un umbral fijo por percentil no son justificables por sí mismos; la
+    curva precisión-recall resume el compromiso real y F1 es la métrica que
+    el equipo reporta como principal para este problema (ver justificación
+    en el reporte de la Etapa A).
+    """
+    scores = np.asarray(scores)
+    labels = np.asarray(labels)
+    if labels.sum() == 0:
+        raise ValueError("select_threshold requiere al menos un positivo en validación")
+    precision, recall, thresholds = precision_recall_curve(labels, scores)
+    f1 = np.divide(
+        2 * precision * recall,
+        precision + recall,
+        out=np.zeros_like(precision),
+        where=(precision + recall) > 0,
+    )
+    best_index = int(np.argmax(f1[:-1])) if len(thresholds) else int(np.argmax(f1))
+    threshold = float(thresholds[best_index]) if len(thresholds) else float(scores.max())
+    average_precision = float(average_precision_score(labels, scores))
+    return ThresholdInfo(
+        threshold=threshold,
+        average_precision=average_precision,
+        precision=float(precision[best_index]),
+        recall=float(recall[best_index]),
+        f1=float(f1[best_index]),
+    )
+
+
+def anomaly_score(model: SequenceAutoencoder, batch: dict, device: torch.device | None = None) -> np.ndarray:
+    """Score de anomalía para un batch ya colacionado (p. ej. de ``get_sender``)."""
+    resolved_device = device or next(model.parameters()).device
+    model.eval()
+    with torch.no_grad():
+        x = batch["x"].to(resolved_device)
+        mask = batch["mask"].to(resolved_device)
+        output = model(x, mask)
+        error = masked_reconstruction_error(output["x_hat"], x, mask)
+    return error.cpu().numpy()
+
+
+def save_checkpoint(
+    path: str | Path,
+    model: SequenceAutoencoder,
+    config: StageAConfig,
+    threshold_info: ThresholdInfo,
+    *,
+    feature_names: Iterable[str] | None = None,
+    history: TrainingHistory | None = None,
+) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "state_dict": model.state_dict(),
+        "config": config.as_dict(),
+        "threshold": threshold_info.as_dict(),
+        "feature_names": list(feature_names) if feature_names is not None else None,
+        "history": {
+            "train_loss": history.train_loss,
+            "validation_average_precision": history.validation_average_precision,
+            "best_epoch": history.best_epoch,
+        }
+        if history is not None
+        else None,
+    }
+    torch.save(payload, path)
+
+
+def load_checkpoint(
+    path: str | Path, *, map_location: str | torch.device | None = "cpu"
+) -> tuple[SequenceAutoencoder, StageAConfig, ThresholdInfo, dict]:
+    payload = torch.load(Path(path), map_location=map_location, weights_only=False)
+    config = StageAConfig(**payload["config"])
+    model = SequenceAutoencoder(config)
+    model.load_state_dict(payload["state_dict"])
+    threshold_info = ThresholdInfo(**payload["threshold"])
+    extra = {"feature_names": payload.get("feature_names"), "history": payload.get("history")}
+    return model, config, threshold_info, extra

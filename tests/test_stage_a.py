@@ -1,16 +1,21 @@
-"""Etapa A: arquitectura, entrenamiento sobre normalidad y scoring."""
+"""Etapa A: autoencoder de secuencias, umbral y checkpoint reutilizable."""
 
 from __future__ import annotations
+
+from pathlib import Path
 
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 
 from src.models.stage_a import (
-    SequenceAutoencoder,
     StageAConfig,
+    anomaly_score,
+    load_checkpoint,
     masked_reconstruction_error,
+    save_checkpoint,
     score_loader,
+    select_threshold,
     train_stage_a,
 )
 
@@ -74,6 +79,8 @@ def _tiny_config() -> StageAConfig:
 
 def test_forward_respects_shapes_and_ignores_padding_content() -> None:
     torch.manual_seed(0)
+    from src.models.stage_a import SequenceAutoencoder
+
     model = SequenceAutoencoder(_tiny_config()).eval()
     x = torch.randn(3, MAX_LEN, FEATURE_DIM)
     mask = torch.zeros(3, MAX_LEN, dtype=torch.bool)
@@ -115,3 +122,47 @@ def test_train_stage_a_runs_and_selects_best_checkpoint_by_validation_ap() -> No
 
     validation_scores = score_loader(model, loaders["validation"], torch.device("cpu"))
     assert validation_scores["score"].shape == validation_scores["y"].shape
+    threshold_info = select_threshold(validation_scores["score"], validation_scores["y"])
+    assert 0.0 <= threshold_info.f1 <= 1.0
+
+
+def test_select_threshold_separates_perfectly_scored_classes() -> None:
+    scores = np.array([0.1, 0.2, 0.15, 5.0, 6.0, 0.3])
+    labels = np.array([0, 0, 0, 1, 1, 0])
+    info = select_threshold(scores, labels)
+    assert info.f1 == 1.0
+    assert info.precision == 1.0
+    assert info.recall == 1.0
+    assert 0.3 < info.threshold <= 5.0
+
+
+def test_select_threshold_requires_at_least_one_positive() -> None:
+    import pytest
+
+    with pytest.raises(ValueError):
+        select_threshold(np.array([0.1, 0.2]), np.array([0, 0]))
+
+
+def test_checkpoint_roundtrip_preserves_predictions(tmp_path: Path) -> None:
+    rng = np.random.default_rng(2)
+    loaders = {
+        "train_normal": _make_loader(24, rng=rng, shuffle=True),
+        "validation": _make_loader(12, rng=rng, shuffle=False, positive_fraction=0.25),
+    }
+    config = _tiny_config()
+    model, _ = train_stage_a(loaders, config, epochs=1, device="cpu", log_every=0)
+    validation_scores = score_loader(model, loaders["validation"], torch.device("cpu"))
+    threshold_info = select_threshold(validation_scores["score"], validation_scores["y"])
+
+    checkpoint_path = tmp_path / "stage_a.pt"
+    save_checkpoint(checkpoint_path, model, config, threshold_info, feature_names=[f"f{i}" for i in range(FEATURE_DIM)])
+    loaded_model, loaded_config, loaded_threshold, extra = load_checkpoint(checkpoint_path)
+
+    assert loaded_config == config
+    assert loaded_threshold.threshold == threshold_info.threshold
+    assert extra["feature_names"] == [f"f{i}" for i in range(FEATURE_DIM)]
+
+    batch = next(iter(loaders["validation"]))
+    original_scores = anomaly_score(model, batch, torch.device("cpu"))
+    reloaded_scores = anomaly_score(loaded_model, batch, torch.device("cpu"))
+    np.testing.assert_allclose(original_scores, reloaded_scores, atol=1e-6)
