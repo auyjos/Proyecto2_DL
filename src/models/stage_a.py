@@ -99,7 +99,10 @@ class SequenceAutoencoder(nn.Module):
             config.dropout,
             batch_first=True,
         )
-        self.encoder = nn.TransformerEncoder(encoder_layer, config.num_encoder_layers)
+        # enable_nested_tensor=False: la ruta rápida de nested tensors para
+        # padding mask no está implementada en MPS; desactivarla no cambia
+        # el resultado, solo evita ese fast-path interno de PyTorch.
+        self.encoder = nn.TransformerEncoder(encoder_layer, config.num_encoder_layers, enable_nested_tensor=False)
         self.pooling = AttentionPooling(config.d_model, config.nhead, config.dropout)
         decoder_layer = nn.TransformerEncoderLayer(
             config.d_model,
@@ -108,7 +111,7 @@ class SequenceAutoencoder(nn.Module):
             config.dropout,
             batch_first=True,
         )
-        self.decoder = nn.TransformerEncoder(decoder_layer, config.num_decoder_layers)
+        self.decoder = nn.TransformerEncoder(decoder_layer, config.num_decoder_layers, enable_nested_tensor=False)
         self.output_proj = nn.Linear(config.d_model, config.feature_dim)
 
     def forward(self, x: torch.Tensor, mask: torch.Tensor) -> dict[str, torch.Tensor]:

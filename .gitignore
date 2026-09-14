@@ -5,9 +5,11 @@ __pycache__/
 datasets/
 artifacts/
 checkpoints/
+.DS_Store
 
 /docs/*
 !/docs/contrato_datos_c1.md
 !/docs/CC3092_Proyecto2_1a1_y_division_trabajo.md
 !/docs/plan_c1_jose_auyon.md
 !/docs/prompts_ia.md
+!/docs/prompts_ia_jose_ruiz.md
