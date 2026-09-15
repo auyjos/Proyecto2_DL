@@ -171,8 +171,10 @@ Estos criterios aplican a todos los componentes y pueden sumar o restar puntos d
 | Integrante | Ownership principal | Responsabilidades concretas |
 |---|---|---|
 | **José Auyón** | **Componente 1: Ingeniería de datos y representación de secuencias** | C1 implementado: selección y justificación de HI-Small; validación y feature engineering; secuencias por remitente; normalización; longitud máxima de 64; prevalencia natural; splits por `Entity ID`; visualizaciones; artefactos, DataLoaders y recuperación de remitentes para los demás componentes. Pendiente: apoyar la integración final y verificar el notebook completo en Colab. |
-| **Jose Ruiz** | **Componente 2A: Aprendizaje de la normalidad + lead del MVP** | Implementar en PyTorch la arquitectura que procese secuencias de longitud variable; entrenar únicamente con comportamiento normal; calcular error de reconstrucción; seleccionar y justificar el umbral usando validación; producir el anomaly score; crear la base del MVP en Streamlit o alternativa elegida; integrar selector de remitente, secuencia y resultados del modelo; encargarse del deployment final. |
-| **Gerardo Fernandez** | **Componente 2B: Transfer learning + ablación + interpretabilidad** | Construir el clasificador supervisado reutilizando lo aprendido en Etapa A; decidir estrategia de fine-tuning/transfer learning; justificar la función de pérdida para el desbalance; combinar las señales A y B; implementar la línea base supervisada desde cero; ejecutar la comparación/ablación; extraer pesos de atención; generar información para el heatmap; seleccionar y analizar los 5 casos requeridos. |
+| **Jose Ruiz** | **Componente 2A (completo) + base del MVP + secciones de negocio del reporte** | C2A implementado, entrenado y evaluado (`report/c2a_etapa_a.md`). MVP en Streamlit con la Etapa A integrada de punta a punta, con `src/inference.run_stage_b` como contrato de extensión ya cerrado para que Gerardo lo conecte sin ayuda de Ruiz. Deployment del MVP actual en Streamlit Cloud. Contexto regulatorio y limitaciones/producción del reporte (`report/contexto_regulatorio.md`, `report/limitaciones_y_produccion.md`). |
+| **Gerardo Fernandez** | **Componente 2B + interpretabilidad + integración final** | Construir el clasificador supervisado reutilizando lo aprendido en Etapa A; decidir estrategia de fine-tuning/transfer learning; justificar la función de pérdida para el desbalance; combinar las señales A y B; implementar la línea base supervisada desde cero; ejecutar la comparación/ablación; extraer pesos de atención; generar información para el heatmap; seleccionar y analizar los 5 casos requeridos; **conectar la Etapa B en `src/inference.run_stage_b`** (el contrato `StageBResult` ya está definido, no requiere cambios de interfaz); **ensamblar el reporte final** (compilar las secciones de los tres, referencias, sección de uso de IA) por ser quien genera los últimos resultados. |
+
+**Por qué se reorganizó así (14 sept):** en la versión anterior de este documento, Ruiz integraba el MVP *después* de que Gerardo terminara C2B, lo que obligaba a Ruiz a volver a trabajar en su propia parte una vez que Gerardo avanzara. Con el contrato de `src/inference.run_stage_b` ya cerrado y probado (`tests/test_inference.py`, `streamlit.testing.v1.AppTest`), Ruiz puede dar por completada su parte hoy sin esperar a Gerardo, y es Gerardo —que de todas formas necesita ejecutar último para tener resultados que ablacionar— quien conecta su propio modelo al punto de extensión y arma el reporte final. Ningún integrante debe volver a una tarea que ya cerró.
 
 ## Estado verificable en esta rama
 
@@ -203,33 +205,33 @@ El **reporte no conviene dejarlo a una sola persona**, porque debe justificar de
 - [x] Elección del umbral y métrica de validación.
 - [x] Descripción técnica y operativa del MVP.
 - [x] Integración del score de anomalía en la interfaz.
+- [x] Contexto de negocio y regulatorio (Guatemala/FinCEN).
+- [x] Limitaciones del sistema y qué se necesita para producción.
 
-Sección escrita en `report/c2a_etapa_a.md`.
+Secciones escritas en `report/c2a_etapa_a.md`, `report/contexto_regulatorio.md` y `report/limitaciones_y_produccion.md`. Estas dos últimas no dependen de los resultados de Gerardo; solo necesitarán 1-2 frases de ajuste cuando exista la tabla de ablación (marcado con 🔶 en el archivo).
 
 ### Gerardo Fernandez
 
-- Estrategia de transfer learning de la Etapa B.
-- Función de pérdida y manejo del desbalance.
-- Experimento de ablación y tabla comparativa.
-- Interpretabilidad, heatmaps y análisis de los 5 casos.
-- Explicación de cómo las señales de A y B se combinan en la predicción final.
+- [ ] Estrategia de transfer learning de la Etapa B.
+- [ ] Función de pérdida y manejo del desbalance.
+- [ ] Experimento de ablación y tabla comparativa.
+- [ ] Interpretabilidad, heatmaps y análisis de los 5 casos.
+- [ ] Explicación de cómo las señales de A y B se combinan en la predicción final.
+- [ ] Ensamblar `report/report.md` final a partir de las secciones ya escritas por los tres (referencias en APA/IEEE, sección de uso de IA ≤200 palabras).
 
 ## División específica del MVP
 
-Aunque **Jose Ruiz** sea el owner del MVP, cada integrante debe entregarle una interfaz clara de su parte:
-
-- **José Auyón:** interfaz entregada mediante `get_sender`, que carga un remitente y devuelve su secuencia procesada, máscara, metadatos y transacciones originales en el mismo orden.
-- **Jose Ruiz:** interfaz, integración de inferencia, visualización de transacciones, scores y deployment.
-- **Gerardo Fernandez:** función para devolver probabilidad de la Etapa B, contribuciones/pesos por transacción y datos necesarios para el mapa de calor.
+- **José Auyón:** interfaz entregada mediante `get_sender`, que carga un remitente y devuelve su secuencia procesada, máscara, metadatos y transacciones originales en el mismo orden. *(Cerrado.)*
+- **Jose Ruiz:** interfaz completa del MVP con la Etapa A (`app/streamlit_app.py`), integración de inferencia, visualización de transacciones, heatmap de atención, explicación en lenguaje natural, y deployment en Streamlit Cloud. *(Cerrado; no requiere que Gerardo termine para funcionar.)*
+- **Gerardo Fernandez:** implementar `src/inference.run_stage_b` devolviendo `StageBResult(probability, contributions)` — el MVP ya lo consume automáticamente en cuanto esa función deje de devolver `None`, sin tocar `app/streamlit_app.py`.
 
 ## Dependencias y orden recomendado
 
 1. **C1 está cerrado y versionado:** las secuencias, features, máscaras y particiones ya tienen un contrato estable.
-2. **Jose Ruiz puede integrar C2A** usando `train_normal` y respetando `mask` para reconstrucción y pooling.
-3. **Ruiz entrena C2A** y entrega a Gerardo el encoder/representación aprendida y los checkpoints necesarios.
-4. **Gerardo completa C2B** con transfer learning y corre el experimento obligatorio contra el clasificador desde cero.
-5. **Ruiz integra el MVP** mientras José y Gerardo exponen funciones limpias de preprocessing e inferencia.
-6. Los tres escriben en paralelo sus secciones del reporte y al final hacen una sola revisión de consistencia.
+2. **C2A y el MVP (con Etapa A) están cerrados:** checkpoint en `artifacts/checkpoints/stage_a.pt` (y copia congelada en `app/model/stage_a.pt`), listos para transfer learning y para producir alertas ya mismo.
+3. **Gerardo completa C2B de forma independiente:** usa el checkpoint de la Etapa A para transfer learning, corre el experimento de ablación obligatorio contra un clasificador desde cero, y conecta su resultado en `src/inference.run_stage_b`. No necesita que Ruiz haga nada más.
+4. **Gerardo ensambla el reporte final** una vez tiene sus resultados, incorporando las secciones ya cerradas de José y Ruiz.
+5. Revisión de consistencia grupal del notebook completo (Auyón + Gerardo, dado que son quienes tocan las últimas celdas) antes de la entrega.
 
 ## Checklist por integrante
 
@@ -262,9 +264,13 @@ Aunque **Jose Ruiz** sea el owner del MVP, cada integrante debe entregarle una i
 - [x] Exponer anomaly score para inferencia
 - [x] Crear interfaz del MVP
 - [x] Integrar selección de remitente y visualización de transacciones
-- [ ] Integrar score A y score B (pendiente del checkpoint de Gerardo; `src/inference.run_stage_b` ya es el punto de extensión)
-- [ ] Desplegar públicamente el MVP (pendiente de conectar el repo a Streamlit Cloud, requiere cuenta del equipo)
-- [x] Escribir la sección correspondiente del reporte
+- [x] Escribir la sección correspondiente del reporte (Etapa A)
+- [x] Escribir contexto de negocio y regulatorio
+- [x] Escribir limitaciones y camino a producción
+- [ ] Desplegar públicamente el MVP en Streamlit Cloud (requiere push de la rama + la cuenta ya creada por Ruiz; ver instrucciones en la conversación/README)
+- [ ] Guardar la URL pública del MVP en un `.txt` (entregable 3)
+
+La integración de la Etapa B en el MVP (`src/inference.run_stage_b`) se movió al checklist de Gerardo: el contrato ya está cerrado y probado desde el lado de Ruiz, así que no requiere que Ruiz vuelva a tocar el MVP.
 
 ### Gerardo Fernandez
 
@@ -280,7 +286,9 @@ Aunque **Jose Ruiz** sea el owner del MVP, cada integrante debe entregarle una i
 - [ ] Preparar datos del heatmap
 - [ ] Analizar 3 casos correctamente detectados
 - [ ] Analizar 2 falsos positivos o falsos negativos
-- [ ] Escribir la sección correspondiente del reporte
+- [ ] Escribir la sección correspondiente del reporte (Etapa B + interpretabilidad)
+- [ ] Conectar `src/inference.run_stage_b` con el modelo entrenado (`StageBResult(probability, contributions)`)
+- [ ] Ensamblar `report/report.md` final a partir de `report/c1_ingenieria_datos.md`, `report/c2a_etapa_a.md`, `report/contexto_regulatorio.md`, `report/limitaciones_y_produccion.md` y su propia sección; agregar referencias y la sección de uso de IA
 
 ## Checklist final del equipo
 
