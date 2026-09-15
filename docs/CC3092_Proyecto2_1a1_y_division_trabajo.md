@@ -179,10 +179,10 @@ Estos criterios aplican a todos los componentes y pueden sumar o restar puntos d
 | Frente | Responsable | Estado | Evidencia disponible |
 |---|---|---|---|
 | C1: datos y secuencias | José Auyón | **Completado** | `src/data/sequences.py`, `tests/test_sequences.py`, `notebooks/proyecto2.ipynb`, contrato, reporte y gráficas. |
-| C2A: aprendizaje de normalidad | Jose Ruiz | **No integrado en esta rama** | El notebook reserva la sección y C1 expone `train_normal`, máscaras y metadatos. |
-| C2B: clasificación y ablación | Gerardo Fernandez | **No integrado en esta rama** | El notebook reserva la sección y C1 expone `train`, `validation`, `test` y `pos_weight`. |
-| C3: reporte e interpretabilidad | Equipo | **Parcial** | José entregó la sección de ingeniería de datos; faltan resultados, casos, regulación y consolidación grupal. |
-| C4: MVP | Jose Ruiz, con interfaces del equipo | **Base de datos lista** | `get_sender` devuelve tensor, máscara, IDs y transacciones originales; faltan modelos, interfaz y despliegue. |
+| C2A: aprendizaje de normalidad | Jose Ruiz | **Completado en `feature/c2a-stage-a-mvp`** | `src/models/stage_a.py`, `tests/test_stage_a.py`, sección C2A ejecutada en `notebooks/proyecto2.ipynb`, checkpoint en `artifacts/checkpoints/stage_a.pt`, resultados en `report/c2a_etapa_a.md`. |
+| C2B: clasificación y ablación | Gerardo Fernandez | **No integrado en esta rama** | El notebook reserva la sección; ahora también expone `stage_a_model.encoder`/`pooling` y el checkpoint de la Etapa A para transfer learning. |
+| C3: reporte e interpretabilidad | Equipo | **Parcial** | José y Ruiz entregaron sus secciones (datos, Etapa A); faltan resultados de Etapa B, los 5 casos, regulación y consolidación grupal. |
+| C4: MVP | Jose Ruiz, con interfaces del equipo | **Etapa A integrada; falta Etapa B y deployment público** | `app/streamlit_app.py` funcional con selector de remitente, heatmap y explicación de la Etapa A (probado con `streamlit.testing.v1.AppTest`); `src/inference.run_stage_b` es el punto de extensión para Gerardo; falta desplegar en Streamlit Cloud. |
 
 ## Trabajo compartido para el Componente 3
 
@@ -198,11 +198,13 @@ El **reporte no conviene dejarlo a una sola persona**, porque debe justificar de
 
 ### Jose Ruiz
 
-- Arquitectura y justificación de la Etapa A.
-- Entrenamiento sobre normalidad.
-- Elección del umbral y métrica de validación.
-- Descripción técnica y operativa del MVP.
-- Integración del score de anomalía en la interfaz.
+- [x] Arquitectura y justificación de la Etapa A.
+- [x] Entrenamiento sobre normalidad.
+- [x] Elección del umbral y métrica de validación.
+- [x] Descripción técnica y operativa del MVP.
+- [x] Integración del score de anomalía en la interfaz.
+
+Sección escrita en `report/c2a_etapa_a.md`.
 
 ### Gerardo Fernandez
 
@@ -251,18 +253,18 @@ Aunque **Jose Ruiz** sea el owner del MVP, cada integrante debe entregarle una i
 
 ### Jose Ruiz
 
-- [ ] Implementar Etapa A en PyTorch
-- [ ] Soportar secuencias de longitud variable
-- [ ] Entrenar exclusivamente sobre normalidad
-- [ ] Calcular reconstruction error por secuencia
-- [ ] Definir threshold con métrica justificada
-- [ ] Guardar checkpoint y representación/encoder reutilizable
-- [ ] Exponer anomaly score para inferencia
-- [ ] Crear interfaz del MVP
-- [ ] Integrar selección de remitente y visualización de transacciones
-- [ ] Integrar score A y score B
-- [ ] Desplegar públicamente el MVP
-- [ ] Escribir la sección correspondiente del reporte
+- [x] Implementar Etapa A en PyTorch
+- [x] Soportar secuencias de longitud variable
+- [x] Entrenar exclusivamente sobre normalidad
+- [x] Calcular reconstruction error por secuencia
+- [x] Definir threshold con métrica justificada
+- [x] Guardar checkpoint y representación/encoder reutilizable
+- [x] Exponer anomaly score para inferencia
+- [x] Crear interfaz del MVP
+- [x] Integrar selección de remitente y visualización de transacciones
+- [ ] Integrar score A y score B (pendiente del checkpoint de Gerardo; `src/inference.run_stage_b` ya es el punto de extensión)
+- [ ] Desplegar públicamente el MVP (pendiente de conectar el repo a Streamlit Cloud, requiere cuenta del equipo)
+- [x] Escribir la sección correspondiente del reporte
 
 ### Gerardo Fernandez
 

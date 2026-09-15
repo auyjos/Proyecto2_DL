@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "numeric_features": [
+    "log_amount_paid",
+    "log_delta_hours",
+    "log_previous_24h"
+  ],
+  "numeric_mean": [
+    7.515120534829783,
+    1.1425192292735682,
+    1.2645433945901028
+  ],
+  "numeric_scale": [
+    3.192621893596243,
+    1.4130999723560869,
+    0.8490737786545608
+  ],
+  "currency_vocabulary": [
+    "Australian Dollar",
+    "Bitcoin",
+    "Brazil Real",
+    "Canadian Dollar",
+    "Euro",
+    "Mexican Peso",
+    "Ruble",
+    "Rupee",
+    "Saudi Riyal",
+    "Shekel",
+    "Swiss Franc",
+    "UK Pound",
+    "US Dollar",
+    "Yen",
+    "Yuan"
+  ],
+  "format_vocabulary": [
+    "ACH",
+    "Bitcoin",
+    "Cash",
+    "Cheque",
+    "Credit Card",
+    "Reinvestment",
+    "Wire"
+  ]
+}
