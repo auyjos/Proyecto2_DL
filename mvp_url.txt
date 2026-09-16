@@ -1,0 +1,7 @@
+MVP — Centinela de Remesas (Claude Artifact)
+https://claude.ai/artifact/B43WbPdFSx987EUmGRULkK
+
+Nota: el artifact es privado por defecto. Debe compartirse como público
+desde el menú "Share" de claude.ai antes de la entrega, para que cualquiera
+con el enlace (equipo, profesor) pueda abrirlo sin necesitar una cuenta de
+Claude ni permisos adicionales.
