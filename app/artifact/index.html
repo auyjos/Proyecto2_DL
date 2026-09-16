@@ -1,0 +1,716 @@
+<title>Centinela de Remesas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    color-scheme: light;
+    --bg:#eef1ec;
+    --surface:#f8f9f6;
+    --surface-raised:#ffffff;
+    --ink:#1a2233;
+    --ink-soft:#4b5566;
+    --muted:#838c9a;
+    --border:rgba(26,34,51,0.13);
+    --border-strong:rgba(26,34,51,0.24);
+    --accent:#b8752e;
+    --accent-ink:#6e4419;
+    --accent-wash:#f4e6d2;
+    --good:#0ca30c;
+    --good-wash:#e3f5e1;
+    --critical:#d03b3b;
+    --critical-wash:#fbe6e4;
+    --heat-1:#fbebd4; --heat-2:#f3d3a0; --heat-3:#e6b36c; --heat-4:#c98a3e; --heat-5:#b8752e; --heat-6:#935c22; --heat-7:#6e4419;
+    --shadow: 0 1px 2px rgba(26,34,51,0.06), 0 8px 24px -12px rgba(26,34,51,0.18);
+    --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", "SF Mono", Consolas, monospace;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --bg:#12161f;
+      --surface:#171c27;
+      --surface-raised:#1e2530;
+      --ink:#edeff2;
+      --ink-soft:#b9c0cc;
+      --muted:#828a99;
+      --border:rgba(237,239,242,0.14);
+      --border-strong:rgba(237,239,242,0.26);
+      --accent:#d99a4e;
+      --accent-ink:#f3d3a0;
+      --accent-wash:#3a2e1c;
+      --good:#3fc23f;
+      --good-wash:#123018;
+      --critical:#f0665f;
+      --critical-wash:#3a1414;
+      --heat-1:#241d13; --heat-2:#3a2e1c; --heat-3:#5a4322; --heat-4:#8a6329; --heat-5:#c98a3e; --heat-6:#e6b36c; --heat-7:#f3d3a0;
+      --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 28px -12px rgba(0,0,0,0.55);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --bg:#12161f;
+    --surface:#171c27;
+    --surface-raised:#1e2530;
+    --ink:#edeff2;
+    --ink-soft:#b9c0cc;
+    --muted:#828a99;
+    --border:rgba(237,239,242,0.14);
+    --border-strong:rgba(237,239,242,0.26);
+    --accent:#d99a4e;
+    --accent-ink:#f3d3a0;
+    --accent-wash:#3a2e1c;
+    --good:#3fc23f;
+    --good-wash:#123018;
+    --critical:#f0665f;
+    --critical-wash:#3a1414;
+    --heat-1:#241d13; --heat-2:#3a2e1c; --heat-3:#5a4322; --heat-4:#8a6329; --heat-5:#c98a3e; --heat-6:#e6b36c; --heat-7:#f3d3a0;
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 28px -12px rgba(0,0,0,0.55);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:15px;
+    line-height:1.55;
+    padding-inline:20px;
+    padding-block:28px 48px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+  h1,h2,h3{font-family:var(--serif);font-weight:600;text-wrap:balance;margin:0;}
+  a{color:var(--accent-ink);}
+  code, .mono{font-family:var(--mono);}
+  .tabular{font-variant-numeric:tabular-nums;}
+
+  /* ---------- header ---------- */
+  header.top{
+    display:flex; flex-wrap:wrap; gap:16px 28px; align-items:flex-end; justify-content:space-between;
+    padding-bottom:20px; margin-bottom:22px; border-bottom:1px solid var(--border);
+  }
+  header.top > *{min-width:0;}
+  .brand-eyebrow{
+    font-family:var(--mono); font-size:11px; letter-spacing:.09em; text-transform:uppercase;
+    color:var(--muted); margin-bottom:6px; overflow-wrap:break-word;
+  }
+  h1.brand{font-size:clamp(26px,4vw,34px); letter-spacing:-.01em;}
+  .brand-sub{color:var(--ink-soft); font-size:14px; margin-top:6px; max-width:52ch;}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; min-width:0;}
+  .badge{
+    font-family:var(--mono); font-size:11.5px; letter-spacing:.02em; color:var(--ink-soft);
+    background:var(--surface); border:1px solid var(--border); border-radius:999px;
+    padding:6px 12px; white-space:nowrap;
+  }
+  .badge b{color:var(--ink); font-weight:600;}
+
+  /* ---------- control bar ---------- */
+  .controls{
+    display:flex; gap:14px; flex-wrap:wrap; align-items:end;
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:16px 18px; margin-bottom:22px; box-shadow:var(--shadow);
+  }
+  .field{display:flex; flex-direction:column; gap:6px; flex:1 1 260px; min-width:0;}
+  .field label{font-size:11.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); font-weight:600;}
+  select, input[type="range"]{font-family:var(--sans); font-size:14.5px;}
+  select{
+    appearance:none; background:var(--surface-raised); color:var(--ink);
+    border:1px solid var(--border-strong); border-radius:9px; padding:9px 34px 9px 12px;
+    background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+    background-position: calc(100% - 18px) 55%, calc(100% - 13px) 55%;
+    background-size: 5px 5px, 5px 5px; background-repeat:no-repeat;
+    width:100%;
+  }
+  select:focus-visible, button:focus-visible, input:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  .field-static{flex:0 0 auto;}
+  .stepper{display:flex; align-items:center; gap:10px; background:var(--surface-raised); border:1px solid var(--border-strong); border-radius:9px; padding:7px 12px;}
+  .stepper button{
+    border:none; background:var(--accent-wash); color:var(--accent-ink); width:24px; height:24px; border-radius:6px;
+    font-size:15px; line-height:1; cursor:pointer; font-family:var(--mono);
+  }
+  .stepper button:hover{filter:brightness(0.95);}
+  .stepper output{font-family:var(--mono); min-width:1.4ch; text-align:center;}
+
+  /* ---------- layout ---------- */
+  .grid{display:grid; grid-template-columns: 320px minmax(0,1fr); gap:22px; align-items:start;}
+  @media (max-width:860px){ .grid{grid-template-columns:minmax(0,1fr);} }
+  .stack{display:flex; flex-direction:column; gap:16px; min-width:0;}
+  .panel{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:18px 20px; box-shadow:var(--shadow);
+  }
+  .panel h2{font-size:15px; margin-bottom:12px;}
+  .panel h2.tight{margin-bottom:8px;}
+  .eyebrow{font-family:var(--mono); font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; display:block;}
+
+  /* ---------- case id ---------- */
+  .case-id{font-family:var(--mono); font-size:13.5px; color:var(--ink-soft); word-break:break-all;}
+  .case-id b{color:var(--ink);}
+
+  /* ---------- verdict pill ---------- */
+  .verdict{
+    display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border-radius:999px;
+    font-weight:600; font-size:13.5px; letter-spacing:.02em; margin-top:4px;
+  }
+  .verdict .dot{width:8px; height:8px; border-radius:50%;}
+  .verdict.alert{background:var(--critical-wash); color:var(--critical);}
+  .verdict.alert .dot{background:var(--critical);}
+  .verdict.normal{background:var(--good-wash); color:var(--good);}
+  .verdict.normal .dot{background:var(--good);}
+
+  /* ---------- stat tiles ---------- */
+  .tiles{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px;}
+  .tile{
+    border:1px solid var(--border); border-radius:10px; padding:10px 12px; background:var(--surface-raised);
+  }
+  .tile .label{font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:600;}
+  .tile .value{font-family:var(--mono); font-size:19px; margin-top:3px; color:var(--ink);}
+  .tile .value.accentcolor{color:var(--accent-ink);}
+  .truth-chip{
+    display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:12px;
+    margin-top:12px; color:var(--ink-soft); border:1px dashed var(--border-strong); border-radius:8px; padding:6px 10px;
+  }
+
+  /* ---------- explanation card ---------- */
+  .explanation p{margin:0; color:var(--ink-soft); font-size:14.5px;}
+  .explanation p + p{margin-top:10px;}
+
+  .stageb-note{
+    display:flex; gap:10px; align-items:flex-start; font-size:13.5px; color:var(--ink-soft);
+    background:var(--accent-wash); border:1px solid var(--border); border-radius:10px; padding:12px 14px;
+  }
+  .stageb-note svg{flex:0 0 auto; margin-top:2px; color:var(--accent-ink);}
+
+  /* ---------- table ---------- */
+  .table-scroll{overflow-x:auto; border-radius:10px; border:1px solid var(--border);}
+  table{border-collapse:collapse; width:100%; min-width:600px; font-size:13.5px;}
+  thead th{
+    text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);
+    font-weight:600; padding:10px 12px; background:var(--surface-raised); border-bottom:1px solid var(--border-strong);
+    position:sticky; top:0;
+  }
+  tbody td{padding:9px 12px; border-bottom:1px solid var(--border); color:var(--ink-soft); white-space:nowrap;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody td.num{font-family:var(--mono); text-align:right; color:var(--ink);}
+  tbody td.idcell{font-family:var(--mono); font-size:12.5px;}
+  .heat-cell{display:flex; align-items:center; gap:8px; justify-content:flex-end;}
+  .heat-swatch{width:34px; height:14px; border-radius:4px; border:1px solid var(--border);}
+  .flag-icon{color:var(--critical); font-weight:700;}
+
+  /* ---------- bar chart ---------- */
+  .chart-wrap{position:relative;}
+  #attnChart{width:100%; height:auto; display:block; overflow:visible;}
+  .bar{fill:var(--heat-4); cursor:pointer;}
+  .bar-axis-label{fill:var(--muted); font-family:var(--mono);}
+  .tooltip{
+    position:absolute; pointer-events:none; background:var(--surface-raised); border:1px solid var(--border-strong);
+    border-radius:8px; padding:8px 10px; font-size:12.5px; box-shadow:var(--shadow); color:var(--ink);
+    transform:translate(-50%,-115%); white-space:nowrap; opacity:0; transition:opacity .1s ease; z-index:5;
+    font-family:var(--mono);
+  }
+  .tooltip.show{opacity:1;}
+
+  /* ---------- footer ---------- */
+  footer.colophon{
+    margin-top:30px; padding-top:18px; border-top:1px solid var(--border);
+    font-family:var(--mono); font-size:11.5px; color:var(--muted); line-height:1.7;
+  }
+  footer.colophon a{color:var(--muted); text-decoration:underline;}
+
+  .loading, .error-box{
+    display:flex; align-items:center; justify-content:center; min-height:240px; color:var(--muted);
+    font-family:var(--mono); font-size:13px; text-align:center; padding:20px;
+  }
+  [hidden]{display:none!important;}
+
+  @media (prefers-reduced-motion: reduce){ *{transition:none!important; animation:none!important;} }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <span class="brand-eyebrow">MVP · Componente 4 · CC3092 Deep Learning, Proyecto 2</span>
+      <h1 class="brand">Centinela de Remesas</h1>
+      <p class="brand-sub">Etapa A del sistema de detección: un autoencoder de secuencias que aprendió comportamiento normal de remesas y señala qué remitentes se apartan de él.</p>
+    </div>
+    <div class="badge-row">
+      <span class="badge"><b>154,913</b> parámetros embebidos</span>
+      <span class="badge">Inferencia 100% en el navegador</span>
+      <span class="badge" id="sampleCountBadge">— casos cargados</span>
+    </div>
+  </header>
+
+  <div id="loadingState" class="loading">Cargando pesos del modelo (~1.4 MB) y casos de prueba (~2.8 MB)…</div>
+  <div id="errorState" class="error-box" hidden>No se pudieron cargar los datos embebidos. Revisa que weights.json, samples.json y meta.json se hayan publicado junto a esta página.</div>
+
+  <main id="app" hidden>
+    <div class="controls">
+      <div class="field">
+        <label for="senderSelect">Remitente (subconjunto del conjunto de prueba)</label>
+        <select id="senderSelect"></select>
+      </div>
+      <div class="field field-static" style="flex-basis:auto;">
+        <label for="topkStepper">Transacciones a explicar</label>
+        <div class="stepper">
+          <button type="button" id="topkMinus" aria-label="Menos">&minus;</button>
+          <output id="topkValue" for="topkStepper">3</output>
+          <button type="button" id="topkPlus" aria-label="Más">&plus;</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <aside class="stack">
+        <section class="panel">
+          <span class="eyebrow">Caso seleccionado</span>
+          <div class="case-id" id="senderIdLabel">—</div>
+          <div class="case-id" id="entityIdLabel">—</div>
+          <div id="verdictPill" class="verdict normal"><span class="dot"></span><span id="verdictText">NORMAL</span></div>
+          <div class="truth-chip" id="truthChip">Etiqueta real (conjunto de prueba): —</div>
+          <div class="tiles">
+            <div class="tile">
+              <div class="label">Transacciones</div>
+              <div class="value tabular" id="tileLength">—</div>
+            </div>
+            <div class="tile">
+              <div class="label">Score de anomalía (A)</div>
+              <div class="value tabular accentcolor" id="tileScore">—</div>
+            </div>
+            <div class="tile">
+              <div class="label">Umbral (F1-óptimo)</div>
+              <div class="value tabular" id="tileThreshold">—</div>
+            </div>
+            <div class="tile">
+              <div class="label">AUC-PR (validación)</div>
+              <div class="value tabular" id="tileAP">—</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel explanation">
+          <h2 class="tight">Explicación en lenguaje natural</h2>
+          <div id="explanationBody"><p>—</p></div>
+        </section>
+
+        <section class="panel">
+          <h2 class="tight">Etapa B — clasificación supervisada</h2>
+          <div class="stageb-note">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5 1 14h14L8 1.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 6.2v3.6M8 11.8v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            <span>Todavía no integrada en este artifact. El contrato (probabilidad + contribución por transacción) es el mismo que expone <code>src/inference.run_stage_b</code> en el repositorio; en cuanto exista ese checkpoint, este panel mostrará la probabilidad combinada en vez de este aviso.</span>
+          </div>
+        </section>
+      </aside>
+
+      <section class="stack">
+        <div class="panel">
+          <h2>Secuencia de transacciones</h2>
+          <div class="table-scroll">
+            <table>
+              <thead><tr>
+                <th>Timestamp</th><th>Banco destino</th><th>Cuenta destino</th>
+                <th style="text-align:right;">Monto pagado</th><th>Moneda</th><th>Formato</th><th style="text-align:right;">Atención (Etapa A)</th>
+              </tr></thead>
+              <tbody id="txBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Mapa de calor de contribución</h2>
+          <div class="chart-wrap">
+            <svg id="attnChart" viewBox="0 0 640 200" role="img" aria-label="Peso de atención por transacción"></svg>
+            <div class="tooltip" id="chartTooltip"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="colophon">
+    Este artifact ejecuta, íntegramente en JavaScript dentro de tu navegador, los mismos pesos entrenados del autoencoder Transformer de la Etapa A (<code>src/models/stage_a.py</code> en el repositorio del proyecto) — no hay servidor ni llamada de red más allá de cargar este archivo. Por el límite de tamaño del artifact se embebió un subconjunto curado de 254 remitentes del conjunto de prueba (los 54 positivos reales más 200 negativos elegidos con semilla 42), en vez de los 7,500 completos que sirve la versión desplegada en Streamlit. Los scores coinciden con la implementación en PyTorch hasta 6 cifras decimales (validado con un puente Node.js antes de publicar). La Etapa B (clasificación supervisada con transfer learning) aún no está integrada.
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var META = null, WEIGHTS = null, SAMPLES = null;
+  var state = { topk: 3 };
+
+  function $(id){ return document.getElementById(id); }
+
+  function fmt4(x){ return Number(x).toFixed(4); }
+  function fmtInt(x){ return new Intl.NumberFormat("es-GT").format(x); }
+  function fmtMoney(x){ return new Intl.NumberFormat("es-GT", {minimumFractionDigits:2, maximumFractionDigits:2}).format(x); }
+
+  // ---------------- inference engine (mirrors src/models/stage_a.py) ----------------
+  var dModel, nHead, headDim, encoderLayers, decoderLayers, maxLen, featureDim;
+
+  function W(name){
+    var w = WEIGHTS[name];
+    return { shape: w.shape, data: w.data };
+  }
+
+  function linear(x, weightName, biasName){
+    var w = W(weightName), b = W(biasName);
+    var outDim = w.shape[0], inDim = w.shape[1];
+    var n = x.length, out = new Array(n);
+    for (var i = 0; i < n; i++){
+      var row = new Float64Array(outDim);
+      for (var o = 0; o < outDim; o++){
+        var sum = b.data[o], base = o * inDim;
+        for (var k = 0; k < inDim; k++) sum += x[i][k] * w.data[base + k];
+        row[o] = sum;
+      }
+      out[i] = row;
+    }
+    return out;
+  }
+
+  function layerNorm(x, weightName, biasName){
+    var w = W(weightName), b = W(biasName), dim = w.shape[0], eps = 1e-5;
+    return x.map(function(row){
+      var mean = 0;
+      for (var k = 0; k < dim; k++) mean += row[k];
+      mean /= dim;
+      var variance = 0;
+      for (var k = 0; k < dim; k++) variance += (row[k]-mean)*(row[k]-mean);
+      variance /= dim;
+      var denom = Math.sqrt(variance + eps);
+      var out = new Float64Array(dim);
+      for (var k = 0; k < dim; k++) out[k] = ((row[k]-mean)/denom) * w.data[k] + b.data[k];
+      return out;
+    });
+  }
+
+  function addRows(a, b){ return a.map(function(row, i){ var out = new Float64Array(row.length); for (var k=0;k<row.length;k++) out[k]=row[k]+b[i][k]; return out; }); }
+  function relu(x){ return x.map(function(row){ var out = new Float64Array(row.length); for (var k=0;k<row.length;k++) out[k]=Math.max(0,row[k]); return out; }); }
+
+  function softmaxInPlace(row){
+    var max = -Infinity;
+    for (var i=0;i<row.length;i++) if (row[i] > max) max = row[i];
+    var sum = 0;
+    for (i=0;i<row.length;i++){ row[i] = Math.exp(row[i]-max); sum += row[i]; }
+    for (i=0;i<row.length;i++) row[i] /= sum;
+  }
+
+  function project(x, wPart, bPart){
+    var outDim = wPart.shape[0], inDim = wPart.shape[1];
+    return x.map(function(row){
+      var out = new Float64Array(outDim);
+      for (var o=0;o<outDim;o++){
+        var sum = bPart[o], base = o*inDim;
+        for (var k=0;k<inDim;k++) sum += row[k]*wPart.data[base+k];
+        out[o]=sum;
+      }
+      return out;
+    });
+  }
+
+  function sliceRows(mat, rowStart, rowEnd){ return { shape:[rowEnd-rowStart, mat.shape[1]], data: mat.data.slice(rowStart*mat.shape[1], rowEnd*mat.shape[1]) }; }
+  function sliceVec(vec, start, end){ return vec.data.slice(start, end); }
+
+  // Multi-head attention matching torch.nn.MultiheadAttention (combined in_proj), returns averaged attention over heads.
+  function multiheadAttention(query, keyValue, prefix, keyPaddingMask){
+    var inW = W(prefix + ".in_proj_weight"), inB = W(prefix + ".in_proj_bias");
+    var Lq = query.length, Lk = keyValue.length;
+    var Wq = sliceRows(inW, 0, dModel), Wk = sliceRows(inW, dModel, 2*dModel), Wv = sliceRows(inW, 2*dModel, 3*dModel);
+    var Bq = sliceVec(inB, 0, dModel), Bk = sliceVec(inB, dModel, 2*dModel), Bv = sliceVec(inB, 2*dModel, 3*dModel);
+    var Q = project(query, Wq, Bq), K = project(keyValue, Wk, Bk), V = project(keyValue, Wv, Bv);
+
+    var concatOut = []; for (var i=0;i<Lq;i++) concatOut.push(new Float64Array(dModel));
+    var avgAttn = []; for (i=0;i<Lq;i++) avgAttn.push(new Float64Array(Lk));
+
+    for (var h=0; h<nHead; h++){
+      var off = h*headDim;
+      for (i=0;i<Lq;i++){
+        var scores = new Float64Array(Lk);
+        for (var j=0;j<Lk;j++){
+          var dot=0;
+          for (var k=0;k<headDim;k++) dot += Q[i][off+k]*K[j][off+k];
+          scores[j] = dot/Math.sqrt(headDim);
+          if (keyPaddingMask && keyPaddingMask[j]) scores[j] = -Infinity;
+        }
+        softmaxInPlace(scores);
+        for (j=0;j<Lk;j++) avgAttn[i][j] += scores[j]/nHead;
+        for (k=0;k<headDim;k++){
+          var s=0;
+          for (j=0;j<Lk;j++) s += scores[j]*V[j][off+k];
+          concatOut[i][off+k] = s;
+        }
+      }
+    }
+    var out = linear(concatOut, prefix + ".out_proj.weight", prefix + ".out_proj.bias");
+    return { output: out, attn: avgAttn };
+  }
+
+  function transformerEncoderLayer(x, prefix, keyPaddingMask){
+    var attnOut = multiheadAttention(x, x, prefix + ".self_attn", keyPaddingMask).output;
+    var h = addRows(x, attnOut);
+    h = layerNorm(h, prefix + ".norm1.weight", prefix + ".norm1.bias");
+    var ff = linear(h, prefix + ".linear1.weight", prefix + ".linear1.bias");
+    ff = relu(ff);
+    ff = linear(ff, prefix + ".linear2.weight", prefix + ".linear2.bias");
+    var out = addRows(h, ff);
+    out = layerNorm(out, prefix + ".norm2.weight", prefix + ".norm2.bias");
+    return out;
+  }
+
+  function positionalEncoding(length){
+    var pe = []; for (var pos=0; pos<length; pos++) pe.push(new Float64Array(dModel));
+    for (pos=0; pos<length; pos++){
+      for (var i=0;i<dModel/2;i++){
+        var divTerm = Math.exp(-Math.log(10000) * (2*i) / dModel);
+        pe[pos][2*i] = Math.sin(pos*divTerm);
+        pe[pos][2*i+1] = Math.cos(pos*divTerm);
+      }
+    }
+    return pe;
+  }
+
+  function forward(xRows, maskBool){
+    var L = xRows.length;
+    var pe = positionalEncoding(L);
+    var h = linear(xRows, "input_proj.weight", "input_proj.bias");
+    h = addRows(h, pe);
+    var keyPaddingMask = maskBool.map(function(v){ return !v; });
+    for (var layer=0; layer<encoderLayers; layer++) h = transformerEncoderLayer(h, "encoder.layers."+layer, keyPaddingMask);
+
+    var query = [Array.prototype.slice.call(W("pooling.query").data)];
+    var pooled = multiheadAttention(query, h, "pooling.attn", keyPaddingMask);
+    var z = pooled.output[0];
+    var attention = pooled.attn[0];
+
+    var broadcast = []; for (var i=0;i<L;i++) broadcast.push(Float64Array.from(z));
+    broadcast = addRows(broadcast, pe);
+    var d = broadcast;
+    for (layer=0; layer<decoderLayers; layer++) d = transformerEncoderLayer(d, "decoder.layers."+layer, null);
+    var xHat = linear(d, "output_proj.weight", "output_proj.bias");
+    return { xHat: xHat, attention: attention };
+  }
+
+  function reconstructionError(xHat, xRows, maskBool){
+    var sum=0, validCount=0;
+    for (var i=0;i<xRows.length;i++){
+      if (!maskBool[i]) continue;
+      validCount++;
+      for (var k=0;k<featureDim;k++){ var diff = xHat[i][k]-xRows[i][k]; sum += diff*diff; }
+    }
+    return sum/(validCount*featureDim);
+  }
+
+  function scoreSample(sample){
+    var result = forward(sample.x, sample.mask);
+    var score = reconstructionError(result.xHat, sample.x, sample.mask);
+    var attention = [];
+    for (var i=0;i<sample.mask.length;i++) if (sample.mask[i]) attention.push(result.attention[i]);
+    return { score: score, attention: attention };
+  }
+
+  // ---------------- natural-language explanation (mirrors src/inference.py) ----------------
+  function topContributions(attention, transactions, topK){
+    var order = attention.map(function(v,i){ return i; }).sort(function(a,b){ return attention[b]-attention[a]; }).slice(0, topK);
+    return order.map(function(index){
+      return { index: index, weight: attention[index], tx: transactions[index] };
+    });
+  }
+
+  function buildExplanation(senderId, transactions, score, threshold, attention, topK){
+    var isAnomalous = score > threshold;
+    var veredicto = isAnomalous ? "genera una ALERTA" : "se clasifica como comportamiento NORMAL";
+    var contributions = topContributions(attention, transactions, topK);
+    var detalle = contributions.map(function(item){
+      return item.tx.timestamp + " por " + fmtMoney(item.tx.amount_paid) + " " + item.tx.payment_currency +
+        " hacia banco " + item.tx.to_bank + " cuenta " + item.tx.to_account + " (peso " + item.weight.toFixed(2) + ")";
+    }).join("; ");
+    var p1 = "El remitente " + senderId + " tiene " + transactions.length + " transacciones retenidas en su historial. " +
+      "La Etapa A calculó un error de reconstrucción de " + fmt4(score) + " contra un umbral de validación de " + fmt4(threshold) +
+      " (F1-óptimo), por lo que el sistema " + veredicto + ". Las transacciones que más influyeron en la representación " +
+      "aprendida por el modelo, según los pesos de atención del pooling, fueron: " + detalle + ".";
+    var p2 = "La Etapa B (clasificación supervisada con transfer learning) todavía no está integrada en este artifact; esta explicación refleja únicamente la señal de la Etapa A.";
+    return [p1, p2];
+  }
+
+  // ---------------- heat color ----------------
+  var HEAT_STEPS = ["--heat-1","--heat-2","--heat-3","--heat-4","--heat-5","--heat-6","--heat-7"];
+  function heatColor(weight, maxWeight){
+    var t = maxWeight > 0 ? Math.min(1, weight / maxWeight) : 0;
+    var idx = Math.min(HEAT_STEPS.length - 1, Math.floor(t * HEAT_STEPS.length));
+    return getComputedStyle(document.documentElement).getPropertyValue(HEAT_STEPS[idx]).trim();
+  }
+
+  // ---------------- rendering ----------------
+  function populateSenderSelect(){
+    var select = $("senderSelect");
+    select.innerHTML = "";
+    SAMPLES.forEach(function(sample, index){
+      var opt = document.createElement("option");
+      opt.value = String(index);
+      opt.textContent = sample.sender_id + " · " + sample.length + " tx" + (sample.y === 1 ? " · caso positivo real" : "");
+      select.appendChild(opt);
+    });
+  }
+
+  function renderTransactionTable(transactions, attention){
+    var maxWeight = Math.max.apply(null, attention);
+    var body = $("txBody");
+    body.innerHTML = "";
+    transactions.forEach(function(tx, i){
+      var tr = document.createElement("tr");
+      var flag = tx.is_laundering ? '<span class="flag-icon" title="Transacción etiquetada como lavado">&#9873;</span> ' : "";
+      tr.innerHTML =
+        "<td class=\"idcell\">" + flag + tx.timestamp + "</td>" +
+        "<td class=\"idcell\">" + tx.to_bank + "</td>" +
+        "<td class=\"idcell\">" + tx.to_account + "</td>" +
+        "<td class=\"num\">" + fmtMoney(tx.amount_paid) + "</td>" +
+        "<td>" + tx.payment_currency + "</td>" +
+        "<td>" + tx.payment_format + "</td>" +
+        "<td class=\"num\"><div class=\"heat-cell\"><span class=\"tabular\">" + attention[i].toFixed(3) + "</span>" +
+          "<span class=\"heat-swatch\" style=\"background:" + heatColor(attention[i], maxWeight) + "\"></span></div></td>";
+      body.appendChild(tr);
+    });
+  }
+
+  function renderChart(transactions, attention){
+    var svg = $("attnChart");
+    var W_ = 640, H_ = 200, padL = 34, padB = 22, padT = 10, padR = 10;
+    var n = attention.length;
+    var innerW = W_ - padL - padR, innerH = H_ - padT - padB;
+    var maxWeight = Math.max.apply(null, attention) || 1;
+    var barGap = 4;
+    var barW = Math.max(3, (innerW - barGap * (n - 1)) / n);
+
+    var svgns = "http://www.w3.org/2000/svg";
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    svg.setAttribute("viewBox", "0 0 " + W_ + " " + H_);
+
+    // axis baseline
+    var axis = document.createElementNS(svgns, "line");
+    axis.setAttribute("x1", padL); axis.setAttribute("x2", W_ - padR);
+    axis.setAttribute("y1", H_ - padB); axis.setAttribute("y2", H_ - padB);
+    axis.setAttribute("stroke", "var(--border-strong)"); axis.setAttribute("stroke-width", "1");
+    svg.appendChild(axis);
+
+    [0, 0.5, 1].forEach(function(t){
+      var y = padT + innerH * (1 - t);
+      var label = document.createElementNS(svgns, "text");
+      label.setAttribute("x", padL - 8); label.setAttribute("y", y + 3);
+      label.setAttribute("text-anchor", "end"); label.setAttribute("font-size", "9.5");
+      label.setAttribute("class", "bar-axis-label");
+      label.textContent = (t * maxWeight).toFixed(2);
+      svg.appendChild(label);
+      if (t > 0){
+        var grid = document.createElementNS(svgns, "line");
+        grid.setAttribute("x1", padL); grid.setAttribute("x2", W_ - padR);
+        grid.setAttribute("y1", y); grid.setAttribute("y2", y);
+        grid.setAttribute("stroke", "var(--border)"); grid.setAttribute("stroke-width", "1");
+        svg.appendChild(grid);
+      }
+    });
+
+    var tooltip = $("chartTooltip");
+    attention.forEach(function(w, i){
+      var barH = Math.max(1, (w / maxWeight) * innerH);
+      var x = padL + i * (barW + barGap);
+      var y = H_ - padB - barH;
+      var rect = document.createElementNS(svgns, "rect");
+      rect.setAttribute("x", x); rect.setAttribute("y", y);
+      rect.setAttribute("width", barW); rect.setAttribute("height", barH);
+      rect.setAttribute("rx", Math.min(3, barW/2));
+      rect.setAttribute("fill", heatColor(w, maxWeight));
+      rect.setAttribute("class", "bar");
+      rect.addEventListener("mouseenter", function(evt){ showTooltip(evt, transactions[i], w); });
+      rect.addEventListener("mousemove", function(evt){ moveTooltip(evt); });
+      rect.addEventListener("mouseleave", hideTooltip);
+      svg.appendChild(rect);
+    });
+
+    function showTooltip(evt, tx, w){
+      tooltip.innerHTML = tx.timestamp + "<br>" + fmtMoney(tx.amount_paid) + " " + tx.payment_currency + "<br>peso " + w.toFixed(3);
+      tooltip.classList.add("show");
+      moveTooltip(evt);
+    }
+    function moveTooltip(evt){
+      var rectBox = svg.getBoundingClientRect(), wrapBox = svg.parentElement.getBoundingClientRect();
+      tooltip.style.left = (evt.clientX - wrapBox.left) + "px";
+      tooltip.style.top = (evt.clientY - wrapBox.top) + "px";
+    }
+    function hideTooltip(){ tooltip.classList.remove("show"); }
+  }
+
+  function renderCase(){
+    var sample = SAMPLES[Number($("senderSelect").value)];
+    var scored = scoreSample(sample);
+    var threshold = META.threshold.threshold;
+    var isAnomalous = scored.score > threshold;
+
+    $("senderIdLabel").innerHTML = "<b>sender_id</b> " + sample.sender_id;
+    $("entityIdLabel").innerHTML = "<b>entity_id</b> " + sample.entity_id;
+    $("tileLength").textContent = fmtInt(sample.length);
+    $("tileScore").textContent = fmt4(scored.score);
+    $("tileThreshold").textContent = fmt4(threshold);
+    $("tileAP").textContent = fmt4(META.threshold.average_precision);
+    $("truthChip").textContent = "Etiqueta real (conjunto de prueba): " + (sample.y === 1 ? "lavado (y=1)" : "normal (y=0)");
+
+    var pill = $("verdictPill");
+    pill.className = "verdict " + (isAnomalous ? "alert" : "normal");
+    $("verdictText").textContent = isAnomalous ? "ALERTA" : "NORMAL";
+
+    renderTransactionTable(sample.transactions, scored.attention);
+    renderChart(sample.transactions, scored.attention);
+
+    var paragraphs = buildExplanation(sample.sender_id, sample.transactions, scored.score, threshold, scored.attention, state.topk);
+    var explanationBody = $("explanationBody");
+    explanationBody.innerHTML = "";
+    paragraphs.forEach(function(text){
+      var p = document.createElement("p");
+      p.textContent = text;
+      explanationBody.appendChild(p);
+    });
+  }
+
+  function wireControls(){
+    $("senderSelect").addEventListener("change", renderCase);
+    $("topkMinus").addEventListener("click", function(){ state.topk = Math.max(1, state.topk - 1); $("topkValue").textContent = state.topk; renderCase(); });
+    $("topkPlus").addEventListener("click", function(){ state.topk = Math.min(10, state.topk + 1); $("topkValue").textContent = state.topk; renderCase(); });
+  }
+
+  function pickDefaultSender(){
+    var idx = SAMPLES.findIndex(function(s){ return s.y === 1; });
+    return idx >= 0 ? idx : 0;
+  }
+
+  function boot(){
+    Promise.all([
+      fetch("weights.json").then(function(r){ return r.json(); }),
+      fetch("samples.json").then(function(r){ return r.json(); }),
+      fetch("meta.json").then(function(r){ return r.json(); })
+    ]).then(function(results){
+      WEIGHTS = results[0]; SAMPLES = results[1]; META = results[2];
+      dModel = META.config.d_model; nHead = META.config.nhead; headDim = dModel / nHead;
+      encoderLayers = META.config.num_encoder_layers; decoderLayers = META.config.num_decoder_layers;
+      maxLen = META.config.max_len; featureDim = META.config.feature_dim;
+
+      $("sampleCountBadge").innerHTML = "<b>" + SAMPLES.length + "</b> casos cargados";
+      populateSenderSelect();
+      $("senderSelect").value = String(pickDefaultSender());
+      wireControls();
+      renderCase();
+
+      $("loadingState").hidden = true;
+      $("app").hidden = false;
+    }).catch(function(err){
+      console.error(err);
+      $("loadingState").hidden = true;
+      $("errorState").hidden = false;
+    });
+  }
+
+  boot();
+})();
+</script>

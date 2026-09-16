@@ -1,0 +1,53 @@
+{
+  "config": {
+    "feature_dim": 33,
+    "max_len": 64,
+    "d_model": 64,
+    "nhead": 4,
+    "num_encoder_layers": 2,
+    "num_decoder_layers": 2,
+    "dim_feedforward": 128
+  },
+  "threshold": {
+    "threshold": 0.1722153127193451,
+    "average_precision": 0.1355821575570372,
+    "precision": 0.5,
+    "recall": 0.18518518518518517,
+    "f1": 0.2702702702702703
+  },
+  "feature_names": [
+    "log_amount_paid_z",
+    "log_delta_hours_z",
+    "log_previous_24h_z",
+    "hour_sin",
+    "hour_cos",
+    "weekday_sin",
+    "weekday_cos",
+    "cross_bank",
+    "destination_seen_before",
+    "currency=<UNK>",
+    "currency=Australian Dollar",
+    "currency=Bitcoin",
+    "currency=Brazil Real",
+    "currency=Canadian Dollar",
+    "currency=Euro",
+    "currency=Mexican Peso",
+    "currency=Ruble",
+    "currency=Rupee",
+    "currency=Saudi Riyal",
+    "currency=Shekel",
+    "currency=Swiss Franc",
+    "currency=UK Pound",
+    "currency=US Dollar",
+    "currency=Yen",
+    "currency=Yuan",
+    "format=<UNK>",
+    "format=ACH",
+    "format=Bitcoin",
+    "format=Cash",
+    "format=Cheque",
+    "format=Credit Card",
+    "format=Reinvestment",
+    "format=Wire"
+  ]
+}
