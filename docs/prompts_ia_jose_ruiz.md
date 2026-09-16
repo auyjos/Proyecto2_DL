@@ -32,6 +32,14 @@ Este archivo conserva los prompts utilizados para implementar C2A (Etapa A) y el
 
 **Finalidad:** los números que aparecen en `report/c2a_etapa_a.md` y en el notebook (AUC-PR de validación 0.136, F1 de prueba 0.192, 7/54 casos detectados) son la salida real de una ejecución del notebook completo, no cifras inventadas. Yo decidí incluir explícitamente que la AUC-PR cae después de la época 2 y que el resultado por sí solo es insuficiente para producción, porque es la motivación real del experimento de ablación que le corresponde a Gerardo.
 
+## Borrador de la Etapa B para no bloquear al equipo
+
+**Prompt (resumen):** pedí implementar también la parte de Gerardo (Etapa B: transfer learning, loss para el desbalance, baseline desde cero, ablación obligatoria, interpretabilidad de 5 casos), como borrador para que él lo revise, con commits que le dieran crédito como coautor (`GerardoFdez7`) y sin hacer push al remoto hasta que yo lo revisara.
+
+**Finalidad y decisiones que tomé yo:** la IA implementó `StageBClassifier` reutilizando el encoder/pooling de la Etapa A, con `BCEWithLogitsLoss(pos_weight=136.80)` y *discriminative fine-tuning*. La primera configuración probada (3 épocas congeladas, LR de backbone 1e-4) dio un resultado peor que el baseline (F1 0.168 vs 0.258 en 3 semillas) — la IA identificó la causa probable (backbone demasiado restringido) y propuso acortar el congelamiento y subir el LR; verifiqué que el nuevo resultado (F1 0.473 vs 0.258) se mantuviera estable en las mismas 3 semillas antes de aceptarlo, precisamente para no quedarme con un ajuste que solo funcionara por casualidad en una corrida. Decidí documentar el intento fallido en el reporte en vez de esconderlo, porque es evidencia real de que la arquitectura de dos etapas no mejora sola: depende de una estrategia de fine-tuning bien calibrada.
+
+Dejé explícito en `docs/CC3092_Proyecto2_1a1_y_division_trabajo.md` que esto es un borrador pendiente de revisión de Gerardo, no trabajo suyo ya validado, y que él decide qué queda, qué ajusta o qué rehace con su propio criterio.
+
 ## MVP y punto de extensión para la Etapa B
 
 **Prompt (resumen):** pedí construir el MVP en Streamlit integrando la Etapa A completa, dejando un punto de extensión claro para que Gerardo conecte la Etapa B sin tocar la interfaz.

@@ -182,9 +182,9 @@ Estos criterios aplican a todos los componentes y pueden sumar o restar puntos d
 |---|---|---|---|
 | C1: datos y secuencias | José Auyón | **Completado** | `src/data/sequences.py`, `tests/test_sequences.py`, `notebooks/proyecto2.ipynb`, contrato, reporte y gráficas. |
 | C2A: aprendizaje de normalidad | Jose Ruiz | **Completado en `feature/c2a-stage-a-mvp`** | `src/models/stage_a.py`, `tests/test_stage_a.py`, sección C2A ejecutada en `notebooks/proyecto2.ipynb`, checkpoint en `artifacts/checkpoints/stage_a.pt`, resultados en `report/c2a_etapa_a.md`. |
-| C2B: clasificación y ablación | Gerardo Fernandez | **No integrado en esta rama** | El notebook reserva la sección; ahora también expone `stage_a_model.encoder`/`pooling` y el checkpoint de la Etapa A para transfer learning. |
-| C3: reporte e interpretabilidad | Equipo | **Parcial** | José y Ruiz entregaron sus secciones (datos, Etapa A); faltan resultados de Etapa B, los 5 casos, regulación y consolidación grupal. |
-| C4: MVP | Jose Ruiz, con interfaces del equipo | **Etapa A integrada; falta Etapa B y deployment público** | `app/streamlit_app.py` funcional con selector de remitente, heatmap y explicación de la Etapa A (probado con `streamlit.testing.v1.AppTest`); `src/inference.run_stage_b` es el punto de extensión para Gerardo; falta desplegar en Streamlit Cloud. |
+| C2B: clasificación y ablación | Gerardo Fernandez | **Borrador completo, pendiente de revisión de Gerardo** | `src/models/stage_b.py`, `tests/test_stage_b.py`, sección C2B ejecutada en `notebooks/proyecto2.ipynb`, checkpoints en `artifacts/checkpoints/stage_b_*.pt`, resultados en `report/c2b_etapa_b.md` y `report/interpretabilidad_casos.md`. Gerardo debe revisar las decisiones (estrategia de fine-tuning, loss, arquitectura de la cabeza) y quedárselas o cambiarlas con criterio propio antes de la entrega. |
+| C3: reporte e interpretabilidad | Equipo | **Borrador casi completo** | José, Ruiz y el borrador de Etapa B entregaron sus secciones; falta consolidación grupal, verificación de Gerardo, y que el equipo complete la referencia 2020-2025 que falta (ver `report/c2b_etapa_b.md`). |
+| C4: MVP | Jose Ruiz, con interfaces del equipo | **Etapa A y borrador de Etapa B integrados** | `app/streamlit_app.py` funcional con ambas etapas (probado con `streamlit.testing.v1.AppTest`); falta que Gerardo revise/apruebe el modelo de la Etapa B y desplegar en Streamlit Cloud. |
 
 ## Trabajo compartido para el Componente 3
 
@@ -212,18 +212,21 @@ Secciones escritas en `report/c2a_etapa_a.md`, `report/contexto_regulatorio.md` 
 
 ### Gerardo Fernandez
 
-- [ ] Estrategia de transfer learning de la Etapa B.
-- [ ] Función de pérdida y manejo del desbalance.
-- [ ] Experimento de ablación y tabla comparativa.
-- [ ] Interpretabilidad, heatmaps y análisis de los 5 casos.
-- [ ] Explicación de cómo las señales de A y B se combinan en la predicción final.
-- [ ] Ensamblar `report/report.md` final a partir de las secciones ya escritas por los tres (referencias en APA/IEEE, sección de uso de IA ≤200 palabras).
+> **Nota (14 sept):** para no bloquear el avance del equipo, Jose Ruiz preparó un borrador completo de C2B (código, tests, notebook ejecutado, checkpoints y reporte) con ayuda de IA, dejando el registro de decisiones en `report/c2b_etapa_b.md`. Es un punto de partida, no un reemplazo del criterio de Gerardo: cada casilla debe marcarse solo después de que él la revise, la entienda y decida si la acepta, la ajusta o la rehace. El objetivo es que Gerardo llegue a revisar, no a implementar desde cero.
+
+- [x] (borrador) Estrategia de transfer learning de la Etapa B — discriminative fine-tuning con descongelamiento gradual; ver justificación y el ajuste de hiperparámetros documentado en `report/c2b_etapa_b.md`.
+- [x] (borrador) Función de pérdida y manejo del desbalance — `BCEWithLogitsLoss(pos_weight=136.80)`.
+- [x] (borrador) Experimento de ablación y tabla comparativa — 3 semillas, dos etapas vs. baseline desde cero.
+- [x] (borrador) Interpretabilidad, heatmaps y análisis de los 5 casos — `report/interpretabilidad_casos.md`.
+- [x] (borrador) Explicación de cómo las señales de A y B se combinan en la predicción final — concatenación del score de A al vector `z` antes de la cabeza de clasificación.
+- [ ] Ensamblar `report/report.md` final a partir de las secciones ya escritas por los tres (referencias en APA/IEEE — falta al menos una referencia 2020-2025 adicional, ver nota en `report/c2b_etapa_b.md` —, y sección de uso de IA ≤200 palabras).
+- [ ] Revisar el borrador completo y decidir qué se queda, qué se ajusta y qué se rehace.
 
 ## División específica del MVP
 
 - **José Auyón:** interfaz entregada mediante `get_sender`, que carga un remitente y devuelve su secuencia procesada, máscara, metadatos y transacciones originales en el mismo orden. *(Cerrado.)*
 - **Jose Ruiz:** interfaz completa del MVP con la Etapa A (`app/streamlit_app.py`), integración de inferencia, visualización de transacciones, heatmap de atención, explicación en lenguaje natural, y deployment en Streamlit Cloud. *(Cerrado; no requiere que Gerardo termine para funcionar.)*
-- **Gerardo Fernandez:** implementar `src/inference.run_stage_b` devolviendo `StageBResult(probability, contributions)` — el MVP ya lo consume automáticamente en cuanto esa función deje de devolver `None`, sin tocar `app/streamlit_app.py`.
+- **Gerardo Fernandez:** `src/inference.run_stage_b` ya está conectado a un checkpoint de la Etapa B (borrador, `app/model/stage_b.pt`) y el MVP lo consume automáticamente. Gerardo debe revisar ese modelo y, si lo reemplaza por el suyo propio, solo necesita guardar el nuevo checkpoint en la misma ruta — no requiere tocar `app/streamlit_app.py`.
 
 ## Dependencias y orden recomendado
 
@@ -274,21 +277,24 @@ La integración de la Etapa B en el MVP (`src/inference.run_stage_b`) se movió 
 
 ### Gerardo Fernandez
 
-- [ ] Implementar baseline supervisado desde cero
-- [ ] Reutilizar representación de Etapa A
-- [ ] Elegir y justificar estrategia de transfer learning
-- [ ] Elegir y justificar loss para desbalance
-- [ ] Entrenar clasificador Etapa B
-- [ ] Definir combinación de señales A + B
-- [ ] Ejecutar ablation / comparación obligatoria
-- [ ] Crear tabla de métricas
-- [ ] Extraer pesos/contribuciones por transacción
-- [ ] Preparar datos del heatmap
-- [ ] Analizar 3 casos correctamente detectados
-- [ ] Analizar 2 falsos positivos o falsos negativos
-- [ ] Escribir la sección correspondiente del reporte (Etapa B + interpretabilidad)
-- [ ] Conectar `src/inference.run_stage_b` con el modelo entrenado (`StageBResult(probability, contributions)`)
-- [ ] Ensamblar `report/report.md` final a partir de `report/c1_ingenieria_datos.md`, `report/c2a_etapa_a.md`, `report/contexto_regulatorio.md`, `report/limitaciones_y_produccion.md` y su propia sección; agregar referencias y la sección de uso de IA
+Checklist técnico detallado. Todo lo marcado `(borrador)` existe en código real, probado y ejecutado, pero como punto de partida para que Gerardo lo revise — no como trabajo suyo ya validado.
+
+- [x] (borrador) Implementar baseline supervisado desde cero — `train_stage_b(..., stage_a_model=None, use_stage_a_score=False)`
+- [x] (borrador) Reutilizar representación de Etapa A — `StageBClassifier.load_backbone_from_stage_a`
+- [x] (borrador) Elegir y justificar estrategia de transfer learning — discriminative fine-tuning, ver `report/c2b_etapa_b.md`
+- [x] (borrador) Elegir y justificar loss para desbalance — `BCEWithLogitsLoss(pos_weight=136.80)`
+- [x] (borrador) Entrenar clasificador Etapa B — `artifacts/checkpoints/stage_b_transferred.pt`
+- [x] (borrador) Definir combinación de señales A + B — score de A concatenado a `z` antes de la cabeza
+- [x] (borrador) Ejecutar ablation / comparación obligatoria — 3 semillas, `report/c2b_etapa_b.md`
+- [x] (borrador) Crear tabla de métricas — sección C2B del notebook
+- [x] (borrador) Extraer pesos/contribuciones por transacción — atención del pooling de la Etapa B
+- [x] (borrador) Preparar datos del heatmap — ya consumido por `app/streamlit_app.py`
+- [x] (borrador) Analizar 3 casos correctamente detectados — `report/interpretabilidad_casos.md`
+- [x] (borrador) Analizar 2 falsos positivos o falsos negativos — `report/interpretabilidad_casos.md` (1 FP + 1 FN)
+- [x] (borrador) Escribir la sección correspondiente del reporte (Etapa B + interpretabilidad)
+- [x] (borrador) Conectar `src/inference.run_stage_b` con el modelo entrenado
+- [ ] **Revisar todo lo anterior y decidir qué se queda, qué se ajusta y qué se rehace**
+- [ ] Ensamblar `report/report.md` final a partir de `report/c1_ingenieria_datos.md`, `report/c2a_etapa_a.md`, `report/contexto_regulatorio.md`, `report/limitaciones_y_produccion.md`, `report/c2b_etapa_b.md` e `report/interpretabilidad_casos.md`; agregar al menos una referencia 2020-2025 adicional y la sección de uso de IA (≤200 palabras, describiendo honestamente qué hizo la IA y qué decidió el equipo)
 
 ## Checklist final del equipo
 

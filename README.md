@@ -17,19 +17,22 @@ Se analizaron PaySim y las seis variantes Small, Medium y Large de IBM AML. PayS
 
 La implementación actual cubre el **Componente 1 (C1)**: validación de datos, selección reproducible de remitentes, construcción de secuencias, ingeniería de features, particiones sin compartir entidades, artefactos persistidos y visualizaciones. El contrato resultante sirve como entrada común para los modelos de las etapas A y B. Los CSV originales y los artefactos generados se excluyen de Git por su tamaño.
 
-También está integrado el **Componente 2A (Etapa A)**: un autoencoder Transformer entrenado solo sobre comportamiento normal, con umbral justificado sobre la curva precisión-recall de validación, y un **MVP en Streamlit** que ya muestra el score de la Etapa A, el mapa de calor de atención y una explicación en lenguaje natural. La Etapa B (Gerardo Fernandez) todavía no está integrada; `src/inference.run_stage_b` es el punto de extensión documentado.
+También está integrado el **Componente 2A (Etapa A)**: un autoencoder Transformer entrenado solo sobre comportamiento normal, con umbral justificado sobre la curva precisión-recall de validación. El **Componente 2B (Etapa B)** reutiliza ese encoder por transfer learning para un clasificador supervisado, con un experimento de ablación obligatorio contra un baseline entrenado desde cero (`report/c2b_etapa_b.md`) — este borrador está pendiente de revisión por el resto del equipo. El **MVP en Streamlit** integra ambas etapas: score de la Etapa A, probabilidad de la Etapa B, mapa de calor de atención y una explicación en lenguaje natural generada automáticamente.
 
 Los principales recursos del repositorio son:
 
 - `src/data/sequences.py`: pipeline reutilizable y contrato de DataLoaders.
 - `src/models/stage_a.py`: arquitectura, entrenamiento, umbral y checkpoint de la Etapa A.
-- `src/inference.py`: integración de inferencia que usa el MVP (Etapa A lista, Etapa B como extensión).
+- `src/models/stage_b.py`: clasificador de la Etapa B, transfer learning y ablación.
+- `src/inference.py`: integración de inferencia que usa el MVP (ambas etapas).
 - `app/streamlit_app.py`: MVP funcional del Componente 4.
 - `notebooks/proyecto2.ipynb`: notebook principal ejecutado y espacio de integración del equipo.
 - `notebooks/comparacion_datasets.ipynb`: comparación reproducible de los datasets.
 - `docs/contrato_datos_c1.md`: formas, campos y reglas que deben respetar los modelos.
 - `report/c1_ingenieria_datos.md`: sección de ingeniería de datos propuesta para el reporte final.
 - `report/c2a_etapa_a.md`: sección de la Etapa A y el MVP propuesta para el reporte final.
+- `report/c2b_etapa_b.md`: sección de la Etapa B y la ablación propuesta para el reporte final.
+- `report/interpretabilidad_casos.md`: análisis de los 5 casos requeridos por C3.
 
 ## Preparación
 
@@ -127,5 +130,5 @@ El entrenamiento itera solo `loaders["train_normal"]`; la AUC-PR de validación 
 .\.venv\Scripts\python.exe -m streamlit run app/streamlit_app.py
 ```
 
-Por defecto usa las copias congeladas en `app/data/c1_hi_small` y `app/model/stage_a.pt` (generadas con la misma semilla y configuración del pipeline principal), para que el MVP funcione sin depender de los CSV originales ni de reentrenar. La barra lateral permite apuntar a otras rutas de artefactos o checkpoint si se regeneran localmente.
+Por defecto usa las copias congeladas en `app/data/c1_hi_small`, `app/model/stage_a.pt` y `app/model/stage_b.pt` (generadas con la misma semilla y configuración del pipeline principal), para que el MVP funcione sin depender de los CSV originales ni de reentrenar. La barra lateral permite apuntar a otras rutas de artefactos o checkpoint si se regeneran localmente; si no se encuentra el checkpoint de la Etapa B, el MVP sigue funcionando solo con la Etapa A.
 
