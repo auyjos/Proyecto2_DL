@@ -1,13 +1,12 @@
-"""Integración de inferencia para el MVP: Etapa A lista, Etapa B como extensión.
+"""Integración de inferencia para el MVP: Etapa A y Etapa B.
 
 ``run_stage_a`` carga un checkpoint de ``src.models.stage_a`` y produce el
 score de anomalía, el veredicto contra el umbral y los pesos de atención del
 pooling (alineados con las transacciones de ``get_sender``, en el mismo
-orden). ``run_stage_b`` es el punto de extensión para Gerardo: hoy no existe
-checkpoint de la Etapa B, así que devuelve ``None`` y el MVP sigue
-funcionando solo con la Etapa A. Cuando Gerardo publique su checkpoint y
-función de predicción, basta reemplazar el cuerpo de ``run_stage_b`` sin
-tocar ``app/streamlit_app.py``.
+orden). ``run_stage_b`` hace lo mismo con un checkpoint de
+``src.models.stage_b``; si no se le pasa un checkpoint (o el archivo no
+existe todavía) devuelve ``None`` y el MVP sigue funcionando solo con la
+Etapa A en vez de simular un resultado.
 """
 
 from __future__ import annotations
@@ -19,6 +18,9 @@ import numpy as np
 import torch
 
 from src.models.stage_a import SequenceAutoencoder, StageAConfig, ThresholdInfo, anomaly_score, load_checkpoint
+from src.models.stage_b import StageBClassifier
+from src.models.stage_b import load_checkpoint as load_stage_b_checkpoint
+from src.models.stage_b import predict_batch as predict_stage_b_batch
 
 
 @dataclass
@@ -33,6 +35,8 @@ class StageAResult:
 @dataclass
 class StageBResult:
     probability: float
+    threshold: float
+    is_anomalous: bool
     contributions: np.ndarray
 
 
@@ -58,15 +62,37 @@ def run_stage_a(model: SequenceAutoencoder, threshold_info: ThresholdInfo, batch
     )
 
 
-def run_stage_b(*_args, **_kwargs) -> StageBResult | None:
-    """Placeholder para la Etapa B (Gerardo Fernandez).
+def load_stage_b(checkpoint_path: str | Path) -> tuple[StageBClassifier, StageAConfig, ThresholdInfo, dict] | None:
+    """Cargar el checkpoint de la Etapa B, o ``None`` si todavía no existe."""
+    path = Path(checkpoint_path)
+    if not path.is_file():
+        return None
+    model, stage_a_config, _config, threshold_info, extra = load_stage_b_checkpoint(path)
+    return model, stage_a_config, threshold_info, extra
 
-    Debe devolver ``StageBResult(probability=..., contributions=<array por
-    transacción, mismo orden y longitud que las filas de ``batch["transactions"]``
-    de ``get_sender``>)``, o ``None`` mientras el checkpoint de la Etapa B no
-    exista, para que el MVP siga mostrando únicamente la Etapa A sin romperse.
+
+def run_stage_b(
+    model: StageBClassifier | None,
+    stage_a_model: SequenceAutoencoder | None,
+    threshold_info: ThresholdInfo | None,
+    batch: dict,
+) -> StageBResult | None:
+    """Probabilidad y contribuciones por transacción para un batch de ``get_sender``.
+
+    Devuelve ``None`` si no hay checkpoint de la Etapa B todavía, para que el
+    MVP siga funcionando solo con la Etapa A en vez de simular un resultado.
     """
-    return None
+    if model is None or threshold_info is None:
+        return None
+    device = next(model.parameters()).device
+    prediction = predict_stage_b_batch(model, batch, device, stage_a_model)
+    probability = float(prediction["probability"][0])
+    return StageBResult(
+        probability=probability,
+        threshold=threshold_info.threshold,
+        is_anomalous=probability > threshold_info.threshold,
+        contributions=prediction["attention"],
+    )
 
 
 def top_contributions(attention: np.ndarray, transactions: list[dict], top_k: int = 3) -> list[dict]:
@@ -94,29 +120,35 @@ def build_explanation(
     *,
     top_k: int = 3,
 ) -> str:
-    veredicto = "genera una ALERTA" if stage_a.is_anomalous else "se clasifica como comportamiento NORMAL"
-    contributions = top_contributions(stage_a.attention, transactions, top_k=top_k)
+    veredicto_a = "genera una ALERTA" if stage_a.is_anomalous else "se clasifica como comportamiento NORMAL"
+    parrafo = (
+        f"El remitente {sender_id} tiene {len(transactions)} transacciones retenidas en su "
+        f"historial. La Etapa A calculó un error de reconstrucción de {stage_a.score:.4f} "
+        f"contra un umbral de validación de {stage_a.threshold:.4f} (F1-óptimo), por lo que "
+        f"la señal de normalidad {veredicto_a}."
+    )
+
+    if stage_b is not None:
+        attention_source = stage_b.contributions
+        fuente = "el clasificador de la Etapa B"
+    else:
+        attention_source = stage_a.attention
+        fuente = "la Etapa A"
+    contributions = top_contributions(attention_source, transactions, top_k=top_k)
     detalle = "; ".join(
         f"{item['timestamp']} por {item['monto_pagado']:.2f} {item['moneda_pago']} "
         f"hacia banco {item['destino_banco']} cuenta {item['destino_cuenta']} "
         f"(peso {item['peso_atención']:.2f})"
         for item in contributions
     )
-    parrafo = (
-        f"El remitente {sender_id} tiene {len(transactions)} transacciones retenidas en su "
-        f"historial. La Etapa A calculó un error de reconstrucción de {stage_a.score:.4f} "
-        f"contra un umbral de validación de {stage_a.threshold:.4f} (F1-óptimo), por lo que "
-        f"el sistema {veredicto}. Las transacciones que más influyeron en la representación "
-        f"aprendida por el modelo, según los pesos de atención del pooling, fueron: {detalle}."
-    )
+    parrafo += f" Según {fuente}, las transacciones que más influyeron fueron: {detalle}."
+
     if stage_b is not None:
+        veredicto_b = "ALERTA" if stage_b.is_anomalous else "NORMAL"
         parrafo += (
             f" La Etapa B estimó una probabilidad de lavado de {stage_b.probability:.1%} "
-            f"combinando la representación aprendida con el clasificador supervisado."
+            f"contra un umbral de {stage_b.threshold:.1%}, con veredicto final {veredicto_b}."
         )
     else:
-        parrafo += (
-            " La Etapa B (Gerardo Fernandez) todavía no está integrada en esta rama; esta "
-            "explicación refleja únicamente la señal de la Etapa A."
-        )
+        parrafo += " La Etapa B todavía no está integrada; esta explicación refleja únicamente la señal de la Etapa A."
     return parrafo
