@@ -270,7 +270,7 @@ Secciones escritas en `report/c2a_etapa_a.md`, `report/contexto_regulatorio.md` 
 - [x] Escribir la sección correspondiente del reporte (Etapa A)
 - [x] Escribir contexto de negocio y regulatorio
 - [x] Escribir limitaciones y camino a producción
-- [ ] Desplegar públicamente el MVP en Streamlit Cloud (requiere push de la rama + la cuenta ya creada por Ruiz; ver instrucciones en la conversación/README)
+- [x] Desplegar públicamente el MVP — se publicó como Claude Artifact con los pesos de la Etapa A embebidos, alternativa explícitamente válida según el enunciado. Falta solo guardar la URL en el `.txt` del entregable final.
 - [ ] Guardar la URL pública del MVP en un `.txt` (entregable 3)
 
 La integración de la Etapa B en el MVP (`src/inference.run_stage_b`) se movió al checklist de Gerardo: el contrato ya está cerrado y probado desde el lado de Ruiz, así que no requiere que Ruiz vuelva a tocar el MVP.
