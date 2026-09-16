@@ -193,7 +193,7 @@ def train_stage_a(
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     history = TrainingHistory()
     best_state = {key: value.detach().clone() for key, value in model.state_dict().items()}
-    best_ap = -1.0
+    best_ap = float("nan")
 
     for epoch in range(epochs):
         model.train()
@@ -217,7 +217,11 @@ def train_stage_a(
         else:
             ap = float("nan")
         history.validation_average_precision.append(ap)
-        if ap >= best_ap:
+        # Sin positivos en validación, ap es NaN y toda comparación con NaN es
+        # False: sin este `or`, best_state se quedaría en los pesos sin
+        # entrenar (capturados antes del bucle) en vez de en algún checkpoint
+        # entrenado.
+        if ap >= best_ap or math.isnan(best_ap):
             best_ap = ap
             history.best_epoch = epoch
             best_state = {key: value.detach().clone() for key, value in model.state_dict().items()}
@@ -315,7 +319,12 @@ def save_checkpoint(
 def load_checkpoint(
     path: str | Path, *, map_location: str | torch.device | None = "cpu"
 ) -> tuple[SequenceAutoencoder, StageAConfig, ThresholdInfo, dict]:
-    payload = torch.load(Path(path), map_location=map_location, weights_only=False)
+    # weights_only=True: el payload solo contiene tensores, dicts, listas y
+    # primitivos (config/threshold ya se guardan como dict, no como la
+    # dataclass); no hace falta permitir unpickling arbitrario para leerlo,
+    # y así una ruta de checkpoint apuntada a un archivo ajeno no puede
+    # ejecutar código.
+    payload = torch.load(Path(path), map_location=map_location, weights_only=True)
     config = StageAConfig(**payload["config"])
     model = SequenceAutoencoder(config)
     model.load_state_dict(payload["state_dict"])

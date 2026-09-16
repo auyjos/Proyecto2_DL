@@ -69,7 +69,11 @@ except (FileNotFoundError, ValueError) as exc:
     )
     st.stop()
 
-stage_b_loaded = _load_stage_b(stage_b_checkpoint_path)
+try:
+    stage_b_loaded = _load_stage_b(stage_b_checkpoint_path)
+except (RuntimeError, ValueError, EOFError) as exc:
+    st.warning(f"No se pudo cargar el checkpoint de la Etapa B ({exc}); el MVP sigue con solo la Etapa A.")
+    stage_b_loaded = None
 stage_b_model, stage_b_threshold_info = (stage_b_loaded[0], stage_b_loaded[2]) if stage_b_loaded else (None, None)
 
 sender_id = st.selectbox("Remitente (conjunto de prueba)", options=test_sender_ids)

@@ -30,6 +30,7 @@ la pérdida focal), y usa directamente el desbalance ya medido.
 
 from __future__ import annotations
 
+import math
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -212,24 +213,29 @@ def train_stage_b(
     criterion = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(pos_weight, device=resolved_device))
     history = StageBHistory(backbone_frozen_epochs=freeze_epochs if transferred else 0)
     best_state = {key: value.detach().clone() for key, value in model.state_dict().items()}
-    best_ap = -1.0
+    best_ap = float("nan")
 
-    def build_optimizer(backbone_unlocked: bool) -> torch.optim.Optimizer:
-        param_groups = [{"params": model.head.parameters(), "lr": lr_head}]
-        if backbone_unlocked:
-            param_groups.append({"params": model.backbone_parameters(), "lr": lr_backbone if transferred else lr_head})
-        return torch.optim.Adam(param_groups, weight_decay=weight_decay)
+    # Un solo optimizer con ambos grupos desde el inicio: mientras el backbone
+    # está congelado (requires_grad=False), autograd nunca produce gradiente
+    # para esos parámetros y Adam simplemente no los actualiza — no hace
+    # falta reconstruir el optimizer al descongelar, lo que además evita
+    # perder el momentum acumulado por la cabeza durante el congelamiento.
+    optimizer = torch.optim.Adam(
+        [
+            {"params": model.head.parameters(), "lr": lr_head},
+            {"params": model.backbone_parameters(), "lr": lr_backbone if transferred else lr_head},
+        ],
+        weight_decay=weight_decay,
+    )
 
     backbone_unlocked = not (transferred and freeze_epochs > 0)
     if not backbone_unlocked:
         model.set_backbone_trainable(False)
-    optimizer = build_optimizer(backbone_unlocked)
 
     for epoch in range(epochs):
         if transferred and epoch == freeze_epochs and not backbone_unlocked:
             model.set_backbone_trainable(True)
             backbone_unlocked = True
-            optimizer = build_optimizer(backbone_unlocked)
 
         model.head.train()
         if backbone_unlocked:
@@ -254,7 +260,10 @@ def train_stage_b(
         validation = score_loader_stage_b(model, loaders["validation"], resolved_device, stage_a_model)
         ap = float(average_precision_score(validation["y"], validation["probability"])) if validation["y"].sum() > 0 else float("nan")
         history.validation_average_precision.append(ap)
-        if ap >= best_ap:
+        # best_ap arranca en NaN: sin el `or`, una validación sin positivos
+        # (ap NaN) nunca actualizaría best_state, dejando los pesos sin
+        # entrenar del modelo en vez de algún checkpoint entrenado.
+        if ap >= best_ap or math.isnan(best_ap):
             best_ap = ap
             history.best_epoch = epoch
             best_state = {key: value.detach().clone() for key, value in model.state_dict().items()}
@@ -330,7 +339,8 @@ def save_checkpoint(
 def load_checkpoint(
     path: str | Path, *, map_location: str | torch.device | None = "cpu"
 ) -> tuple[StageBClassifier, StageAConfig, StageBConfig, ThresholdInfo, dict]:
-    payload = torch.load(Path(path), map_location=map_location, weights_only=False)
+    # weights_only=True: ver la misma nota en src/models/stage_a.load_checkpoint.
+    payload = torch.load(Path(path), map_location=map_location, weights_only=True)
     stage_a_config = StageAConfig(**payload["stage_a_config"])
     config = StageBConfig(**payload["config"])
     model = StageBClassifier(stage_a_config, config)

@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from src.models.stage_a import SequenceAutoencoder, StageAConfig, ThresholdInfo, anomaly_score, load_checkpoint
+from src.models.stage_a import SequenceAutoencoder, StageAConfig, ThresholdInfo, load_checkpoint, masked_reconstruction_error
 from src.models.stage_b import StageBClassifier
 from src.models.stage_b import load_checkpoint as load_stage_b_checkpoint
 from src.models.stage_b import predict_batch as predict_stage_b_batch
@@ -48,9 +48,11 @@ def run_stage_a(model: SequenceAutoencoder, threshold_info: ThresholdInfo, batch
     """Score, veredicto y atención para un batch de tamaño 1 de ``get_sender``."""
     device = next(model.parameters()).device
     model.eval()
+    x = batch["x"].to(device)
+    mask_tensor = batch["mask"].to(device)
     with torch.no_grad():
-        output = model(batch["x"].to(device), batch["mask"].to(device))
-    score = float(anomaly_score(model, batch, device)[0])
+        output = model(x, mask_tensor)
+        score = float(masked_reconstruction_error(output["x_hat"], x, mask_tensor)[0])
     mask = batch["mask"][0].numpy()
     attention = output["attention_weights"][0].detach().cpu().numpy()[mask]
     return StageAResult(
