@@ -5,7 +5,7 @@ de la Etapa A y un subconjunto curado del conjunto de prueba (todos los
 positivos reales más una muestra aleatoria de negativos), para que
 ``app/artifact/index.html`` corra la inferencia en JavaScript sin depender
 de un servidor. El forward pass en JS está validado contra esta misma
-exportación (ver ``report/c2a_etapa_a.md``): coincide con PyTorch hasta
+exportación: coincide con PyTorch hasta
 6 cifras decimales.
 
 Uso: ``python scripts/export_stage_a_for_artifact.py`` desde la raíz del

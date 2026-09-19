@@ -235,16 +235,16 @@
     <div>
       <span class="brand-eyebrow">MVP · Componente 4 · CC3092 Deep Learning, Proyecto 2</span>
       <h1 class="brand">Centinela de Remesas</h1>
-      <p class="brand-sub">Etapa A del sistema de detección: un autoencoder de secuencias que aprendió comportamiento normal de remesas y señala qué remitentes se apartan de él.</p>
+      <p class="brand-sub">Etapas A y B del sistema de detección: un autoencoder de secuencias que aprendió comportamiento normal de remesas (Etapa A), más un clasificador supervisado con transfer learning sobre ese mismo backbone (Etapa B) que combina esa señal con etiquetas para estimar la probabilidad de lavado.</p>
     </div>
     <div class="badge-row">
-      <span class="badge"><b>154,913</b> parámetros embebidos</span>
+      <span class="badge" id="paramCountBadge">— parámetros embebidos</span>
       <span class="badge">Inferencia 100% en el navegador</span>
       <span class="badge" id="sampleCountBadge">— casos cargados</span>
     </div>
   </header>
 
-  <div id="loadingState" class="loading">Cargando pesos del modelo (~1.4 MB) y casos de prueba (~2.8 MB)…</div>
+  <div id="loadingState" class="loading">Cargando pesos de los modelos (~2.3 MB) y casos de prueba (~2.8 MB)…</div>
   <div id="errorState" class="error-box" hidden>No se pudieron cargar los datos embebidos. Revisa que weights.json, samples.json y meta.json se hayan publicado junto a esta página.</div>
 
   <main id="app" hidden>
@@ -298,10 +298,7 @@
 
         <section class="panel">
           <h2 class="tight">Etapa B — clasificación supervisada</h2>
-          <div class="stageb-note">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5 1 14h14L8 1.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 6.2v3.6M8 11.8v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-            <span>Todavía no integrada en este artifact. El contrato (probabilidad + contribución por transacción) es el mismo que expone <code>src/inference.run_stage_b</code> en el repositorio; en cuanto exista ese checkpoint, este panel mostrará la probabilidad combinada en vez de este aviso.</span>
-          </div>
+          <div id="stageBBody"></div>
         </section>
       </aside>
 
@@ -313,6 +310,7 @@
               <thead><tr>
                 <th>Timestamp</th><th>Banco destino</th><th>Cuenta destino</th>
                 <th style="text-align:right;">Monto pagado</th><th>Moneda</th><th>Formato</th><th style="text-align:right;">Atención (Etapa A)</th>
+                <th id="thStageBAttn" style="text-align:right;" hidden>Contribución (Etapa B)</th>
               </tr></thead>
               <tbody id="txBody"></tbody>
             </table>
@@ -320,7 +318,7 @@
         </div>
 
         <div class="panel">
-          <h2>Mapa de calor de contribución</h2>
+          <h2 id="heatmapTitle">Mapa de calor de contribución</h2>
           <div class="chart-wrap">
             <svg id="attnChart" viewBox="0 0 640 200" role="img" aria-label="Peso de atención por transacción"></svg>
             <div class="tooltip" id="chartTooltip"></div>
@@ -331,7 +329,7 @@
   </main>
 
   <footer class="colophon">
-    Este artifact ejecuta, íntegramente en JavaScript dentro de tu navegador, los mismos pesos entrenados del autoencoder Transformer de la Etapa A (<code>src/models/stage_a.py</code> en el repositorio del proyecto) — no hay servidor ni llamada de red más allá de cargar este archivo. Por el límite de tamaño del artifact se embebió un subconjunto curado de 254 remitentes del conjunto de prueba (los 54 positivos reales más 200 negativos elegidos con semilla 42), en vez de los 7,500 completos que sirve la versión desplegada en Streamlit. Los scores coinciden con la implementación en PyTorch hasta 6 cifras decimales (validado con un puente Node.js antes de publicar). La Etapa B (clasificación supervisada con transfer learning) aún no está integrada.
+    Este artifact ejecuta, íntegramente en JavaScript dentro de tu navegador, los mismos pesos entrenados del autoencoder Transformer de la Etapa A y del clasificador de la Etapa B (<code>src/models/stage_a.py</code> y <code>src/models/stage_b.py</code> en el repositorio del proyecto) — no hay servidor ni llamada de red más allá de cargar este archivo. La Etapa B reutiliza el mismo backbone (input_proj + encoder + pooling) transferido de la Etapa A y ajustado con etiquetas, y su cabeza combina el vector comprimido con el error de reconstrucción de la Etapa A, exactamente el contrato de <code>src/inference.run_stage_b</code>. Por el límite de tamaño del artifact se embebió un subconjunto curado de 254 remitentes del conjunto de prueba (los 54 positivos reales más 200 negativos elegidos con semilla 42), en vez de los 7,500 completos que sirve la versión desplegada en Streamlit. Los scores coinciden con la implementación en PyTorch hasta 6 cifras decimales (validado con un puente Node.js antes de publicar).
   </footer>
 </div>
 
@@ -473,25 +471,50 @@
     return pe;
   }
 
-  function forward(xRows, maskBool){
+  // Encoder + attention pooling, shared by the Stage A autoencoder and the Stage B
+  // classifier: both reuse the identical input_proj/encoder/pooling architecture
+  // (Stage B's backbone is transferred from Stage A, then fine-tuned separately),
+  // so `prefix` picks which set of weights to run it against ("" for Stage A,
+  // "stageB." for Stage B).
+  function encode(xRows, maskBool, prefix){
     var L = xRows.length;
     var pe = positionalEncoding(L);
-    var h = linear(xRows, "input_proj.weight", "input_proj.bias");
+    var h = linear(xRows, prefix + "input_proj.weight", prefix + "input_proj.bias");
     h = addRows(h, pe);
     var keyPaddingMask = maskBool.map(function(v){ return !v; });
-    for (var layer=0; layer<encoderLayers; layer++) h = transformerEncoderLayer(h, "encoder.layers."+layer, keyPaddingMask);
+    for (var layer=0; layer<encoderLayers; layer++) h = transformerEncoderLayer(h, prefix + "encoder.layers."+layer, keyPaddingMask);
 
-    var query = [Array.prototype.slice.call(W("pooling.query").data)];
-    var pooled = multiheadAttention(query, h, "pooling.attn", keyPaddingMask);
-    var z = pooled.output[0];
-    var attention = pooled.attn[0];
+    var query = [Array.prototype.slice.call(W(prefix + "pooling.query").data)];
+    var pooled = multiheadAttention(query, h, prefix + "pooling.attn", keyPaddingMask);
+    return { z: pooled.output[0], attention: pooled.attn[0], pe: pe };
+  }
 
-    var broadcast = []; for (var i=0;i<L;i++) broadcast.push(Float64Array.from(z));
-    broadcast = addRows(broadcast, pe);
+  function forward(xRows, maskBool){
+    var L = xRows.length;
+    var enc = encode(xRows, maskBool, "");
+    var broadcast = []; for (var i=0;i<L;i++) broadcast.push(Float64Array.from(enc.z));
+    broadcast = addRows(broadcast, enc.pe);
     var d = broadcast;
-    for (layer=0; layer<decoderLayers; layer++) d = transformerEncoderLayer(d, "decoder.layers."+layer, null);
+    for (var layer=0; layer<decoderLayers; layer++) d = transformerEncoderLayer(d, "decoder.layers."+layer, null);
     var xHat = linear(d, "output_proj.weight", "output_proj.bias");
-    return { xHat: xHat, attention: attention };
+    return { xHat: xHat, attention: enc.attention };
+  }
+
+  function sigmoid(x){ return 1 / (1 + Math.exp(-x)); }
+
+  // Stage B: same transferred backbone as Stage A (via encode(..., "stageB.")),
+  // concatenated with Stage A's own reconstruction error as an extra feature
+  // before the classification head — mirrors StageBClassifier.forward in
+  // src/models/stage_b.py exactly (head_input_dim = d_model + 1).
+  function stageBForward(xRows, maskBool, stageAScore){
+    var enc = encode(xRows, maskBool, "stageB.");
+    var features = Array.prototype.slice.call(enc.z).concat([stageAScore]);
+    var hidden = linear([features], "stageB.head.0.weight", "stageB.head.0.bias");
+    hidden = relu(hidden);
+    var logit = linear(hidden, "stageB.head.3.weight", "stageB.head.3.bias")[0][0];
+    var attention = [];
+    for (var i=0;i<maskBool.length;i++) if (maskBool[i]) attention.push(enc.attention[i]);
+    return { probability: sigmoid(logit), attention: attention };
   }
 
   function reconstructionError(xHat, xRows, maskBool){
@@ -509,7 +532,12 @@
     var score = reconstructionError(result.xHat, sample.x, sample.mask);
     var attention = [];
     for (var i=0;i<sample.mask.length;i++) if (sample.mask[i]) attention.push(result.attention[i]);
-    return { score: score, attention: attention };
+    var stageB = hasStageB() ? stageBForward(sample.x, sample.mask, score) : null;
+    return { score: score, attention: attention, stageB: stageB };
+  }
+
+  function hasStageB(){
+    return !!(META && META.stage_b && WEIGHTS && WEIGHTS["stageB.head.3.weight"]);
   }
 
   // ---------------- natural-language explanation (mirrors src/inference.py) ----------------
@@ -520,19 +548,32 @@
     });
   }
 
-  function buildExplanation(senderId, transactions, score, threshold, attention, topK){
-    var isAnomalous = score > threshold;
-    var veredicto = isAnomalous ? "genera una ALERTA" : "se clasifica como comportamiento NORMAL";
-    var contributions = topContributions(attention, transactions, topK);
+  // Mirrors src/inference.build_explanation: Stage B's own attention is the
+  // "contribution" source when Stage B is available, falling back to Stage A's
+  // pooling attention otherwise — same rule used for the heatmap below.
+  function buildExplanation(senderId, transactions, stageA, stageB, topK){
+    var veredictoA = stageA.score > stageA.threshold ? "genera una ALERTA" : "se clasifica como comportamiento NORMAL";
+    var p1 = "El remitente " + senderId + " tiene " + transactions.length + " transacciones retenidas en su historial. " +
+      "La Etapa A calculó un error de reconstrucción de " + fmt4(stageA.score) + " contra un umbral de validación de " + fmt4(stageA.threshold) +
+      " (F1-óptimo), por lo que la señal de normalidad " + veredictoA + ".";
+
+    var attentionSource, fuente;
+    if (stageB){ attentionSource = stageB.attention; fuente = "el clasificador de la Etapa B"; }
+    else { attentionSource = stageA.attention; fuente = "la Etapa A"; }
+    var contributions = topContributions(attentionSource, transactions, topK);
     var detalle = contributions.map(function(item){
       return item.tx.timestamp + " por " + fmtMoney(item.tx.amount_paid) + " " + item.tx.payment_currency +
         " hacia banco " + item.tx.to_bank + " cuenta " + item.tx.to_account + " (peso " + item.weight.toFixed(2) + ")";
     }).join("; ");
-    var p1 = "El remitente " + senderId + " tiene " + transactions.length + " transacciones retenidas en su historial. " +
-      "La Etapa A calculó un error de reconstrucción de " + fmt4(score) + " contra un umbral de validación de " + fmt4(threshold) +
-      " (F1-óptimo), por lo que el sistema " + veredicto + ". Las transacciones que más influyeron en la representación " +
-      "aprendida por el modelo, según los pesos de atención del pooling, fueron: " + detalle + ".";
-    var p2 = "La Etapa B (clasificación supervisada con transfer learning) todavía no está integrada en este artifact; esta explicación refleja únicamente la señal de la Etapa A.";
+    var p2 = "Según " + fuente + ", las transacciones que más influyeron fueron: " + detalle + ".";
+
+    if (stageB){
+      var veredictoB = stageB.isAnomalous ? "ALERTA" : "NORMAL";
+      p2 += " La Etapa B estimó una probabilidad de lavado de " + (stageB.probability*100).toFixed(1) + "% contra un umbral de " +
+        (stageB.threshold*100).toFixed(1) + "%, con veredicto final " + veredictoB + ".";
+    } else {
+      p2 += " La Etapa B todavía no está integrada; esta explicación refleja únicamente la señal de la Etapa A.";
+    }
     return [p1, p2];
   }
 
@@ -556,8 +597,10 @@
     });
   }
 
-  function renderTransactionTable(transactions, attention){
+  function renderTransactionTable(transactions, attention, attentionB){
     var maxWeight = Math.max.apply(null, attention);
+    var maxWeightB = attentionB ? Math.max.apply(null, attentionB) : 0;
+    $("thStageBAttn").hidden = !attentionB;
     var body = $("txBody");
     body.innerHTML = "";
     transactions.forEach(function(tx, i){
@@ -572,6 +615,10 @@
         "<td>" + tx.payment_format + "</td>" +
         "<td class=\"num\"><div class=\"heat-cell\"><span class=\"tabular\">" + attention[i].toFixed(3) + "</span>" +
           "<span class=\"heat-swatch\" style=\"background:" + heatColor(attention[i], maxWeight) + "\"></span></div></td>";
+      if (attentionB){
+        tr.innerHTML += "<td class=\"num\"><div class=\"heat-cell\"><span class=\"tabular\">" + attentionB[i].toFixed(3) + "</span>" +
+          "<span class=\"heat-swatch\" style=\"background:" + heatColor(attentionB[i], maxWeightB) + "\"></span></div></td>";
+      }
       body.appendChild(tr);
     });
   }
@@ -643,11 +690,45 @@
     function hideTooltip(){ tooltip.classList.remove("show"); }
   }
 
+  function renderStageBPanel(stageB){
+    var body = $("stageBBody");
+    if (!stageB){
+      body.innerHTML =
+        '<div class="stageb-note">' +
+        '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5 1 14h14L8 1.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 6.2v3.6M8 11.8v.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>' +
+        '<span>Todavía no integrada en este artifact. El contrato (probabilidad + contribución por transacción) es el mismo que expone <code>src/inference.run_stage_b</code> en el repositorio; en cuanto exista ese checkpoint, este panel mostrará la probabilidad combinada en vez de este aviso.</span>' +
+        '</div>';
+      return;
+    }
+    body.innerHTML =
+      '<div id="stageBVerdictPill" class="verdict"><span class="dot"></span><span id="stageBVerdictText"></span></div>' +
+      '<div class="tiles">' +
+        '<div class="tile"><div class="label">Probabilidad de lavado</div><div class="value tabular accentcolor" id="tileProbB"></div></div>' +
+        '<div class="tile"><div class="label">Umbral (F1-óptimo)</div><div class="value tabular" id="tileThresholdB"></div></div>' +
+      '</div>' +
+      '<p style="margin-top:12px; color:var(--ink-soft); font-size:13px;">Backbone (input_proj + encoder + pooling) transferido de la Etapa A y ajustado con etiquetas; la cabeza combina el vector comprimido <code>z</code> con el error de reconstrucción de la Etapa A antes de clasificar.</p>';
+    $("stageBVerdictPill").className = "verdict " + (stageB.isAnomalous ? "alert" : "normal");
+    $("stageBVerdictText").textContent = stageB.isAnomalous ? "ALERTA" : "NORMAL";
+    $("tileProbB").textContent = (stageB.probability * 100).toFixed(1) + "%";
+    $("tileThresholdB").textContent = (stageB.threshold * 100).toFixed(1) + "%";
+  }
+
   function renderCase(){
     var sample = SAMPLES[Number($("senderSelect").value)];
     var scored = scoreSample(sample);
     var threshold = META.threshold.threshold;
     var isAnomalous = scored.score > threshold;
+    var stageA = { score: scored.score, threshold: threshold, attention: scored.attention };
+    var stageB = null;
+    if (scored.stageB){
+      var thresholdB = META.stage_b.threshold.threshold;
+      stageB = {
+        probability: scored.stageB.probability,
+        threshold: thresholdB,
+        isAnomalous: scored.stageB.probability > thresholdB,
+        attention: scored.stageB.attention
+      };
+    }
 
     $("senderIdLabel").innerHTML = "<b>sender_id</b> " + sample.sender_id;
     $("entityIdLabel").innerHTML = "<b>entity_id</b> " + sample.entity_id;
@@ -661,10 +742,14 @@
     pill.className = "verdict " + (isAnomalous ? "alert" : "normal");
     $("verdictText").textContent = isAnomalous ? "ALERTA" : "NORMAL";
 
-    renderTransactionTable(sample.transactions, scored.attention);
-    renderChart(sample.transactions, scored.attention);
+    renderStageBPanel(stageB);
 
-    var paragraphs = buildExplanation(sample.sender_id, sample.transactions, scored.score, threshold, scored.attention, state.topk);
+    var chartAttention = stageB ? stageB.attention : scored.attention;
+    $("heatmapTitle").textContent = "Mapa de calor de contribución" + (stageB ? " (Etapa B)" : " (Etapa A)");
+    renderTransactionTable(sample.transactions, scored.attention, stageB ? stageB.attention : null);
+    renderChart(sample.transactions, chartAttention);
+
+    var paragraphs = buildExplanation(sample.sender_id, sample.transactions, stageA, stageB, state.topk);
     var explanationBody = $("explanationBody");
     explanationBody.innerHTML = "";
     paragraphs.forEach(function(text){
@@ -696,6 +781,9 @@
       encoderLayers = META.config.num_encoder_layers; decoderLayers = META.config.num_decoder_layers;
       maxLen = META.config.max_len; featureDim = META.config.feature_dim;
 
+      var totalParams = 0;
+      Object.keys(WEIGHTS).forEach(function(key){ totalParams += WEIGHTS[key].data.length; });
+      $("paramCountBadge").innerHTML = "<b>" + fmtInt(totalParams) + "</b> parámetros embebidos";
       $("sampleCountBadge").innerHTML = "<b>" + SAMPLES.length + "</b> casos cargados";
       populateSenderSelect();
       $("senderSelect").value = String(pickDefaultSender());

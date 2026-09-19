@@ -1,5 +1,7 @@
 # CC3092 Proyecto 2 — detección de lavado en secuencias
 
+**MVP público:** [Centinela de Remesas (Claude Artifact)](https://claude.ai/artifact/B43WbPdFSx987EUmGRULkK)
+
 Este proyecto académico desarrolla un prototipo de detección de lavado de dinero a partir del historial de transacciones de cada remitente. El objetivo es identificar patrones sospechosos que una operación aislada no revela, como cambios de frecuencia, montos atípicos, nuevos destinatarios y actividad en horarios inusuales. Además de producir una alerta, el sistema debe señalar qué transacciones influyeron en ella para facilitar su revisión.
 
 ## Enfoque del proyecto
@@ -17,7 +19,7 @@ Se analizaron PaySim y las seis variantes Small, Medium y Large de IBM AML. PayS
 
 La implementación actual cubre el **Componente 1 (C1)**: validación de datos, selección reproducible de remitentes, construcción de secuencias, ingeniería de features, particiones sin compartir entidades, artefactos persistidos y visualizaciones. El contrato resultante sirve como entrada común para los modelos de las etapas A y B. Los CSV originales y los artefactos generados se excluyen de Git por su tamaño.
 
-También está integrado el **Componente 2A (Etapa A)**: un autoencoder Transformer entrenado solo sobre comportamiento normal, con umbral justificado sobre la curva precisión-recall de validación. El **Componente 2B (Etapa B)** reutiliza ese encoder por transfer learning para un clasificador supervisado, con un experimento de ablación obligatorio contra un baseline entrenado desde cero (`report/c2b_etapa_b.md`) — este borrador está pendiente de revisión por el resto del equipo. El **MVP en Streamlit** integra ambas etapas: score de la Etapa A, probabilidad de la Etapa B, mapa de calor de atención y una explicación en lenguaje natural generada automáticamente.
+También está integrado el **Componente 2A (Etapa A)**: un autoencoder Transformer entrenado solo sobre comportamiento normal, con umbral justificado sobre la curva precisión-recall de validación. El **Componente 2B (Etapa B)** reutiliza ese encoder por transfer learning para un clasificador supervisado, con un experimento de ablación obligatorio contra un baseline entrenado desde cero. El **MVP en Streamlit** integra ambas etapas: score de la Etapa A, probabilidad de la Etapa B, mapa de calor de atención y una explicación en lenguaje natural generada automáticamente.
 
 Los principales recursos del repositorio son:
 
@@ -29,10 +31,6 @@ Los principales recursos del repositorio son:
 - `notebooks/proyecto2.ipynb`: notebook principal ejecutado y espacio de integración del equipo.
 - `notebooks/comparacion_datasets.ipynb`: comparación reproducible de los datasets.
 - `docs/contrato_datos_c1.md`: formas, campos y reglas que deben respetar los modelos.
-- `report/c1_ingenieria_datos.md`: sección de ingeniería de datos propuesta para el reporte final.
-- `report/c2a_etapa_a.md`: sección de la Etapa A y el MVP propuesta para el reporte final.
-- `report/c2b_etapa_b.md`: sección de la Etapa B y la ablación propuesta para el reporte final.
-- `report/interpretabilidad_casos.md`: análisis de los 5 casos requeridos por C3.
 
 ## Preparación
 
@@ -122,7 +120,7 @@ threshold_info = select_threshold(validation["score"], validation["y"])
 save_checkpoint("artifacts/checkpoints/stage_a.pt", model, config, threshold_info, feature_names=manifest["feature_names"])
 ```
 
-El entrenamiento itera solo `loaders["train_normal"]`; la AUC-PR de validación se usa exclusivamente para elegir el mejor checkpoint por época, nunca para el gradiente. El umbral se elige maximizando F1 sobre la curva precisión-recall de validación, justificado por la prevalencia extrema (~0.72% positivos). Detalle completo, resultados y limitaciones honestas en [report/c2a_etapa_a.md](report/c2a_etapa_a.md) y en la sección C2A de [notebooks/proyecto2.ipynb](notebooks/proyecto2.ipynb).
+El entrenamiento itera solo `loaders["train_normal"]`; la AUC-PR de validación se usa exclusivamente para elegir el mejor checkpoint por época, nunca para el gradiente. El umbral se elige maximizando F1 sobre la curva precisión-recall de validación, justificado por la prevalencia extrema (~0.72% positivos). Los resultados, la ablación y las limitaciones se documentan en el notebook ejecutado.
 
 ## Correr el MVP
 

@@ -200,7 +200,7 @@ def train_stage_b(
     en el presupuesto de épocas disponible. Con este cronograma más corto y
     un LR mayor, el modelo transferido pasa a superar consistentemente a
     ese mismo baseline en las 3 semillas (números exactos, con la varianza
-    real observada entre corridas, en `report/c2b_etapa_b.md`).
+    real observada entre corridas).
     """
     torch.manual_seed(config.seed)
     resolved_device = resolve_device(device)

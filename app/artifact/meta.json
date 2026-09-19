@@ -49,5 +49,21 @@
     "format=Credit Card",
     "format=Reinvestment",
     "format=Wire"
-  ]
+  ],
+  "stage_b": {
+    "config": {
+      "hidden_dim": 64,
+      "dropout": 0.1,
+      "use_stage_a_score": true,
+      "seed": 42
+    },
+    "threshold": {
+      "threshold": 0.958315908908844,
+      "average_precision": 0.36636502803320214,
+      "precision": 0.3333333333333333,
+      "recall": 0.5,
+      "f1": 0.4
+    },
+    "transferred": true
+  }
 }

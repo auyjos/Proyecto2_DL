@@ -45,7 +45,7 @@ md_intro = nbf.v4.new_markdown_cell(
     "La hipótesis fue que el backbone no alcanzaba a adaptarse a la señal supervisada con un LR "
     "tan conservador y tan pocas épocas de ajuste completo. Acortar el congelamiento a 1 época y "
     "subir el LR del backbone a 5e-4 confirmó la hipótesis (resultados abajo). Detalle completo "
-    "en `report/c2b_etapa_b.md`."
+    "en la tabla de ablación de este notebook."
 )
 
 code_setup = nbf.v4.new_code_cell(
@@ -180,7 +180,7 @@ md_interpretability_header = nbf.v4.new_markdown_cell(
     "Tres verdaderos positivos, un falso positivo y un falso negativo, seleccionados con el "
     "modelo oficial (semilla 42). Los pesos de atención son los del pooling de la Etapa B, "
     "alineados con `transaction_ids`. Análisis completo en "
-    "`report/interpretabilidad_casos.md`."
+    "la sección de interpretabilidad de este notebook."
 )
 
 code_case_selection = nbf.v4.new_code_cell(
