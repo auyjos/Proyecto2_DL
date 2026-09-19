@@ -1,4 +1,4 @@
-"""Exportar la Etapa A a JSON para el MVP como Claude Artifact.
+"""Exportar la Etapa A a JSON para el MVP.
 
 Genera ``app/artifact/{weights,samples,meta}.json`` a partir del checkpoint
 de la Etapa A y un subconjunto curado del conjunto de prueba (todos los

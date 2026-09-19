@@ -1,4 +1,4 @@
-"""Añadir la Etapa B (transfer learning) al mismo Claude Artifact de la Etapa A.
+"""Añadir la Etapa B (transfer learning) al mismo MVP de la Etapa A.
 
 Reutiliza los ``app/artifact/{weights,samples,meta}.json`` que ya publicó
 ``export_stage_a_for_artifact.py`` en vez de regenerarlos desde cero: añade

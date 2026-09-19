@@ -1,6 +1,6 @@
 # CC3092 Proyecto 2 — detección de lavado en secuencias
 
-**MVP público:** [Centinela de Remesas (Claude Artifact)](https://claude.ai/artifact/B43WbPdFSx987EUmGRULkK)
+**MVP público:** [Centinela de Remesas](https://remittances-fraud-detection.streamlit.app/)
 
 Este proyecto académico desarrolla un prototipo de detección de lavado de dinero a partir del historial de transacciones de cada remitente. El objetivo es identificar patrones sospechosos que una operación aislada no revela, como cambios de frecuencia, montos atípicos, nuevos destinatarios y actividad en horarios inusuales. Además de producir una alerta, el sistema debe señalar qué transacciones influyeron en ella para facilitar su revisión.
 
